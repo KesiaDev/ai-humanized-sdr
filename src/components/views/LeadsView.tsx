@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, Phone, Mail, Building2, Filter } from 'lucide-react';
+import { Search, Plus, Phone, Mail, Building2, Filter, Users } from 'lucide-react';
 import { Lead } from '@/types/lead';
 
 interface LeadsViewProps {
