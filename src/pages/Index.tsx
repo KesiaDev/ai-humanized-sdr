@@ -8,11 +8,11 @@ import { AgentConfigView } from '@/components/views/AgentConfigView';
 import { ScheduleView } from '@/components/views/ScheduleView';
 import { SettingsView } from '@/components/views/SettingsView';
 import { ExportView } from '@/components/views/ExportView';
-import { mockLeads, mockConversations } from '@/data/mockLeads';
+import { Lead, Conversation } from '@/types/lead';
 
 const viewMeta: Record<string, { title: string; subtitle?: string }> = {
   dashboard: { title: 'Dashboard', subtitle: 'Visão geral do seu funil de vendas' },
-  leads: { title: 'Gestão de Leads', subtitle: `Gerencie todos os seus leads` },
+  leads: { title: 'Gestão de Leads', subtitle: 'Gerencie todos os seus leads' },
   conversations: { title: 'Conversas', subtitle: 'Acompanhe as interações da IA' },
   schedule: { title: 'Agenda', subtitle: 'Eventos e reuniões agendadas' },
   agent: { title: 'Agente IA', subtitle: 'Configure o comportamento da IA' },
@@ -22,6 +22,8 @@ const viewMeta: Record<string, { title: string; subtitle?: string }> = {
 
 const Index = () => {
   const [currentView, setCurrentView] = useState('dashboard');
+  const [leads] = useState<Lead[]>([]);
+  const [conversations] = useState<Conversation[]>([]);
 
   const handleSelectLead = (leadId: string) => {
     setCurrentView('leads');
@@ -35,12 +37,12 @@ const Index = () => {
       <div className="ml-[260px] transition-all duration-300">
         <AppHeader title={meta.title} subtitle={meta.subtitle} />
         <main className="p-6">
-          {currentView === 'dashboard' && <DashboardView leads={mockLeads} onSelectLead={handleSelectLead} />}
-          {currentView === 'leads' && <LeadsView leads={mockLeads} onSelectLead={handleSelectLead} />}
-          {currentView === 'conversations' && <ConversationsView conversations={mockConversations} />}
+          {currentView === 'dashboard' && <DashboardView leads={leads} onSelectLead={handleSelectLead} />}
+          {currentView === 'leads' && <LeadsView leads={leads} onSelectLead={handleSelectLead} />}
+          {currentView === 'conversations' && <ConversationsView conversations={conversations} />}
           {currentView === 'schedule' && <ScheduleView />}
           {currentView === 'agent' && <AgentConfigView />}
-          {currentView === 'export' && <ExportView leads={mockLeads} />}
+          {currentView === 'export' && <ExportView leads={leads} />}
           {currentView === 'settings' && <SettingsView />}
         </main>
       </div>
