@@ -14,7 +14,187 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message: string | null
+          lead_id: string
+          lead_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          lead_id: string
+          lead_name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          lead_id?: string
+          lead_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string | null
+          id: string
+          last_contact: string | null
+          name: string
+          next_follow_up: string | null
+          notes: string | null
+          phone: string | null
+          position: string | null
+          score: number
+          source: string
+          status: string
+          tags: string[] | null
+          updated_at: string
+          urgency: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_contact?: string | null
+          name: string
+          next_follow_up?: string | null
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          score?: number
+          source?: string
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+          urgency?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_contact?: string | null
+          name?: string
+          next_follow_up?: string | null
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          score?: number
+          source?: string
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+          urgency?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          lead_id: string
+          sender: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          sender?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          sender?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_events: {
+        Row: {
+          created_at: string
+          event_date: string
+          event_time: string
+          id: string
+          lead_id: string | null
+          lead_name: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_date: string
+          event_time: string
+          id?: string
+          lead_id?: string | null
+          lead_name?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_date?: string
+          event_time?: string
+          id?: string
+          lead_id?: string | null
+          lead_name?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
