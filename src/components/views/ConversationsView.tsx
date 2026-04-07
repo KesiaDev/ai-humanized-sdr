@@ -2,11 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-<<<<<<< HEAD
-import { Send, Bot, User, Clock } from 'lucide-react';
-=======
 import { Send, Bot, User, Clock, MessageSquareOff } from 'lucide-react';
->>>>>>> af8b612617ead079803111f0945c88896d7ac9c9
 import { Conversation, Message } from '@/types/lead';
 
 interface ConversationsViewProps {
@@ -30,8 +26,6 @@ export function ConversationsView({ conversations }: ConversationsViewProps) {
     return new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
   };
 
-<<<<<<< HEAD
-=======
   if (conversations.length === 0) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-140px)]">
@@ -44,7 +38,6 @@ export function ConversationsView({ conversations }: ConversationsViewProps) {
     );
   }
 
->>>>>>> af8b612617ead079803111f0945c88896d7ac9c9
   return (
     <div className="flex gap-4 h-[calc(100vh-140px)]">
       {/* Conversation List */}
