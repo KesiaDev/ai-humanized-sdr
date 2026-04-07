@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_config: {
+        Row: {
+          config: Json
+          id: number
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json
+          id: number
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json
+          id?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string

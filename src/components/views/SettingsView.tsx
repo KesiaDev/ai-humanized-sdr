@@ -44,9 +44,9 @@ export function SettingsView() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
       // Also update company name in agent_config if it exists
       await supabase
-        .from('agent_config')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', 1);
+        .from('agent_config' as any)
+        .update({ updated_at: new Date().toISOString() } as any)
+        .eq('id', 1 as any);
       toast({ title: 'Configurações salvas!', description: 'Suas preferências foram atualizadas.' });
     } catch {
       toast({ title: 'Salvo localmente', description: 'Configurações salvas no navegador.' });
