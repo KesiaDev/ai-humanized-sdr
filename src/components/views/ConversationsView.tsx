@@ -2,7 +2,11 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+<<<<<<< HEAD
 import { Send, Bot, User, Clock } from 'lucide-react';
+=======
+import { Send, Bot, User, Clock, MessageSquareOff } from 'lucide-react';
+>>>>>>> af8b612617ead079803111f0945c88896d7ac9c9
 import { Conversation, Message } from '@/types/lead';
 
 interface ConversationsViewProps {
@@ -26,6 +30,21 @@ export function ConversationsView({ conversations }: ConversationsViewProps) {
     return new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
   };
 
+<<<<<<< HEAD
+=======
+  if (conversations.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-140px)]">
+        <div className="text-center text-muted-foreground">
+          <MessageSquareOff className="w-16 h-16 mx-auto mb-4 opacity-30" />
+          <h3 className="font-display font-semibold text-lg text-card-foreground mb-2">Nenhuma conversa ainda</h3>
+          <p className="text-sm max-w-md">As conversas aparecerão aqui quando o agente IA começar a interagir com leads via WhatsApp, Instagram ou outros canais conectados</p>
+        </div>
+      </div>
+    );
+  }
+
+>>>>>>> af8b612617ead079803111f0945c88896d7ac9c9
   return (
     <div className="flex gap-4 h-[calc(100vh-140px)]">
       {/* Conversation List */}
