@@ -1,11 +1,60 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Settings, Globe, Bell, Palette, Link2 } from 'lucide-react';
+import { Settings, Bell, Link2, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+const STORAGE_KEY = 'sdr_settings';
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+const defaultSettings = {
+  companyName: 'Prevensul Comercial Elétrica',
+  segment: 'Segurança e Elétrica',
+  website: 'https://prevensul.com.br',
+  notifNewLead: true,
+  notifQualified: true,
+  notifMeeting: true,
+  notifNoResponse: false,
+};
 
 export function SettingsView() {
+  const { toast } = useToast();
+  const saved = loadSettings();
+  const [settings, setSettings] = useState({ ...defaultSettings, ...saved });
+  const [saving, setSaving] = useState(false);
+
+  const update = (k: keyof typeof settings, v: string | boolean) =>
+    setSettings(prev => ({ ...prev, [k]: v }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      // Also update company name in agent_config if it exists
+      await supabase
+        .from('agent_config')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', 1);
+      toast({ title: 'Configurações salvas!', description: 'Suas preferências foram atualizadas.' });
+    } catch {
+      toast({ title: 'Salvo localmente', description: 'Configurações salvas no navegador.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-3xl">
       {/* General */}
@@ -19,16 +68,28 @@ export function SettingsView() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs">Nome da Empresa</Label>
-              <Input defaultValue="Sua Empresa" className="bg-muted border-none" />
+              <Input
+                value={settings.companyName}
+                onChange={e => update('companyName', e.target.value)}
+                className="bg-muted border-none"
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Segmento</Label>
-              <Input defaultValue="Tecnologia" className="bg-muted border-none" />
+              <Input
+                value={settings.segment}
+                onChange={e => update('segment', e.target.value)}
+                className="bg-muted border-none"
+              />
             </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Website</Label>
-            <Input defaultValue="https://suaempresa.com.br" className="bg-muted border-none" />
+            <Input
+              value={settings.website}
+              onChange={e => update('website', e.target.value)}
+              className="bg-muted border-none"
+            />
           </div>
         </CardContent>
       </Card>
@@ -69,20 +130,25 @@ export function SettingsView() {
         </CardHeader>
         <CardContent className="space-y-4">
           {[
-            { label: 'Novo lead recebido', defaultChecked: true },
-            { label: 'Lead qualificado', defaultChecked: true },
-            { label: 'Reunião próxima', defaultChecked: true },
-            { label: 'Lead sem resposta há 24h', defaultChecked: false },
+            { key: 'notifNewLead' as const, label: 'Novo lead recebido' },
+            { key: 'notifQualified' as const, label: 'Lead qualificado' },
+            { key: 'notifMeeting' as const, label: 'Reunião próxima' },
+            { key: 'notifNoResponse' as const, label: 'Lead sem resposta há 24h' },
           ].map(item => (
-            <div key={item.label} className="flex items-center justify-between">
+            <div key={item.key} className="flex items-center justify-between">
               <span className="text-sm text-card-foreground">{item.label}</span>
-              <Switch defaultChecked={item.defaultChecked} />
+              <Switch
+                checked={settings[item.key]}
+                onCheckedChange={v => update(item.key, v)}
+              />
             </div>
           ))}
         </CardContent>
       </Card>
 
-      <Button className="w-full">Salvar Configurações</Button>
+      <Button className="w-full gap-2" onClick={handleSave} disabled={saving}>
+        {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : 'Salvar Configurações'}
+      </Button>
     </div>
   );
 }

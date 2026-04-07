@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,9 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Settings, MessageSquare, Sparkles, Mic, Zap, FileText, BookOpen,
   RefreshCw, Calendar, Target, Bot, Power, PowerOff, Save, Plus, X,
-  ChevronDown, ChevronUp, HelpCircle
+  ChevronDown, ChevronUp, HelpCircle, Loader2, CheckCircle,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
+import { getAgentConfig, updateAgentConfig, DEFAULT_AGENT_CONFIG, type FullAgentConfig } from '@/lib/api';
 
 const agentSections = [
   { id: 'configuracoes', label: 'Configurações', icon: Settings },
@@ -27,6 +30,11 @@ const agentSections = [
   { id: 'agenda', label: 'Agenda', icon: Calendar },
   { id: 'intencoes', label: 'Intenções', icon: Target },
 ];
+
+type SectionProps = {
+  config: FullAgentConfig;
+  onChange: (p: Partial<FullAgentConfig>) => void;
+};
 
 function InfoTooltip({ text }: { text: string }) {
   return (
@@ -74,23 +82,30 @@ function KeywordInput({ keywords, onChange }: { keywords: string[]; onChange: (k
 
 // --- Section Components ---
 
-function ConfiguracoesSection() {
-  const [agentActive, setAgentActive] = useState(true);
+function ConfiguracoesSection({ config, onChange }: SectionProps) {
+  const channels = [
+    { key: 'channelWhatsApp' as const, label: 'WhatsApp' },
+    { key: 'channelInstagram' as const, label: 'Instagram' },
+    { key: 'channelFacebook' as const, label: 'Facebook Messenger' },
+    { key: 'channelSiteChat' as const, label: 'Chat do Site' },
+    { key: 'channelEmail' as const, label: 'Email' },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-lg font-semibold text-foreground">Status do Agente</h2>
         <div className="flex gap-3 mt-3">
           <Button
-            variant={agentActive ? 'default' : 'outline'}
-            onClick={() => setAgentActive(true)}
+            variant={config.active ? 'default' : 'outline'}
+            onClick={() => onChange({ active: true })}
             className="gap-2"
           >
             <Power className="w-4 h-4" /> ATIVO
           </Button>
           <Button
-            variant={!agentActive ? 'destructive' : 'outline'}
-            onClick={() => setAgentActive(false)}
+            variant={!config.active ? 'destructive' : 'outline'}
+            onClick={() => onChange({ active: false })}
             className="gap-2"
           >
             <PowerOff className="w-4 h-4" /> DESLIGAR
@@ -111,25 +126,25 @@ function ConfiguracoesSection() {
             <TabsContent value="info-basicas" className="space-y-4">
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Nome do Agente</Label>
-                <Input defaultValue="Agente Padrão" />
+                <Input value={config.agentName} onChange={e => onChange({ agentName: e.target.value })} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Descrição do Agente</Label>
-                <Textarea defaultValue="Configuração inicial do agente" className="min-h-[100px]" />
+                <Textarea value={config.agentDescription} onChange={e => onChange({ agentDescription: e.target.value })} className="min-h-[100px]" />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-sm font-medium">Cargo / Função</Label>
-                  <Input defaultValue="Consultora de Vendas" />
+                  <Input value={config.role} onChange={e => onChange({ role: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-sm font-medium">Nome da Empresa</Label>
-                  <Input defaultValue="Sua Empresa" />
+                  <Input value={config.companyName} onChange={e => onChange({ companyName: e.target.value })} />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Idioma Principal</Label>
-                <Select defaultValue="pt-br">
+                <Select value={config.language} onValueChange={v => onChange({ language: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pt-br">Português (Brasil)</SelectItem>
@@ -146,29 +161,32 @@ function ConfiguracoesSection() {
                   <p className="text-sm font-medium">Responder 24/7</p>
                   <p className="text-xs text-muted-foreground">O agente responde a qualquer hora</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={config.alwaysOn} onCheckedChange={v => onChange({ alwaysOn: v })} />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-sm font-medium">Início do Expediente</Label>
-                  <Input type="time" defaultValue="08:00" />
+                  <Input type="time" value={config.startTime} onChange={e => onChange({ startTime: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-sm font-medium">Fim do Expediente</Label>
-                  <Input type="time" defaultValue="18:00" />
+                  <Input type="time" value={config.endTime} onChange={e => onChange({ endTime: e.target.value })} />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Mensagem fora do horário</Label>
-                <Textarea defaultValue="Obrigado pelo contato! Nosso horário de atendimento é de 08h às 18h. Retornaremos assim que possível." />
+                <Textarea value={config.offHoursMsg} onChange={e => onChange({ offHoursMsg: e.target.value })} />
               </div>
             </TabsContent>
 
             <TabsContent value="canais" className="space-y-4">
-              {['WhatsApp', 'Instagram', 'Facebook Messenger', 'Chat do Site', 'Email'].map(ch => (
-                <div key={ch} className="flex items-center justify-between p-3 rounded-lg bg-muted">
-                  <p className="text-sm font-medium">{ch}</p>
-                  <Switch defaultChecked={ch === 'WhatsApp' || ch === 'Chat do Site'} />
+              {channels.map(ch => (
+                <div key={ch.key} className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                  <p className="text-sm font-medium">{ch.label}</p>
+                  <Switch
+                    checked={config[ch.key]}
+                    onCheckedChange={v => onChange({ [ch.key]: v })}
+                  />
                 </div>
               ))}
             </TabsContent>
@@ -176,11 +194,11 @@ function ConfiguracoesSection() {
             <TabsContent value="credenciais" className="space-y-4">
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">API Key (opcional)</Label>
-                <Input type="password" placeholder="sk-..." />
+                <Input type="password" value={config.apiKey} onChange={e => onChange({ apiKey: e.target.value })} placeholder="sk-..." />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Webhook URL</Label>
-                <Input placeholder="https://..." />
+                <Input value={config.webhookUrl} onChange={e => onChange({ webhookUrl: e.target.value })} placeholder="https://..." />
               </div>
             </TabsContent>
           </Tabs>
@@ -190,7 +208,7 @@ function ConfiguracoesSection() {
   );
 }
 
-function ComunicacaoSection() {
+function ComunicacaoSection({ config, onChange }: SectionProps) {
   return (
     <div className="space-y-6">
       <h2 className="font-display text-lg font-semibold text-foreground">Comunicação</h2>
@@ -214,7 +232,7 @@ function ComunicacaoSection() {
                       Buffer (latência) <InfoTooltip text="Tempo em segundos que o agente aguarda antes de responder" />
                     </Label>
                     <div className="flex items-center gap-2">
-                      <Input type="number" defaultValue="10" className="w-24" />
+                      <Input type="number" value={config.bufferSec} onChange={e => onChange({ bufferSec: Number(e.target.value) })} className="w-24" />
                       <span className="text-sm text-muted-foreground">seg</span>
                     </div>
                   </div>
@@ -223,7 +241,7 @@ function ComunicacaoSection() {
                       Tempo entre <InfoTooltip text="Intervalo entre mensagens consecutivas" />
                     </Label>
                     <div className="flex items-center gap-2">
-                      <Input type="number" defaultValue="3" className="w-24" />
+                      <Input type="number" value={config.timeBetweenSec} onChange={e => onChange({ timeBetweenSec: Number(e.target.value) })} className="w-24" />
                       <span className="text-sm text-muted-foreground">seg</span>
                     </div>
                   </div>
@@ -234,14 +252,14 @@ function ComunicacaoSection() {
                   Resposta de erro <InfoTooltip text="Texto que a IA responderá em caso de erro no processamento" />
                 </Label>
                 <p className="text-xs text-muted-foreground">Digite o texto que a IA responderá em caso de erro no processamento</p>
-                <Textarea defaultValue="Desculpa, não entendi. Pode por favor enviar a mensagem de outra forma?" className="min-h-[80px]" />
+                <Textarea value={config.errorResponse} onChange={e => onChange({ errorResponse: e.target.value })} className="min-h-[80px]" />
               </div>
             </TabsContent>
 
             <TabsContent value="linguagem" className="space-y-4">
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Tom de comunicação</Label>
-                <Select defaultValue="amigavel">
+                <Select value={config.tone} onValueChange={v => onChange({ tone: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="formal">Formal</SelectItem>
@@ -251,14 +269,14 @@ function ComunicacaoSection() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
                 <Label className="text-sm font-medium">Usar emojis</Label>
-                <Switch defaultChecked />
+                <Switch checked={config.useEmojis} onCheckedChange={v => onChange({ useEmojis: v })} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Tamanho máximo da resposta</Label>
                 <div className="flex items-center gap-2">
-                  <Input type="number" defaultValue="500" className="w-28" />
+                  <Input type="number" value={config.maxResponseLength} onChange={e => onChange({ maxResponseLength: Number(e.target.value) })} className="w-28" />
                   <span className="text-sm text-muted-foreground">caracteres</span>
                 </div>
               </div>
@@ -266,17 +284,17 @@ function ComunicacaoSection() {
 
             <TabsContent value="humanizacao-texto" className="space-y-4">
               {[
-                { label: 'Simular erros de digitação', desc: 'Adiciona pequenos erros naturais ocasionalmente' },
-                { label: 'Variação de saudações', desc: 'Alterna entre diferentes formas de cumprimento' },
-                { label: 'Pausas naturais', desc: 'Simula tempo de leitura e digitação' },
-                { label: 'Gírias regionais', desc: 'Usa expressões comuns da região configurada' },
+                { key: 'simulateTyping' as const, label: 'Simular erros de digitação', desc: 'Adiciona pequenos erros naturais ocasionalmente' },
+                { key: 'vocabularyVariation' as const, label: 'Variação de saudações', desc: 'Alterna entre diferentes formas de cumprimento' },
+                { key: 'contextMemory' as const, label: 'Pausas naturais', desc: 'Simula tempo de leitura e digitação' },
+                { key: 'naturalReactions' as const, label: 'Gírias regionais', desc: 'Usa expressões comuns da região configurada' },
               ].map(item => (
-                <div key={item.label} className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                <div key={item.key} className="flex items-center justify-between p-3 rounded-lg bg-muted">
                   <div>
                     <p className="text-sm font-medium">{item.label}</p>
                     <p className="text-xs text-muted-foreground">{item.desc}</p>
                   </div>
-                  <Switch />
+                  <Switch checked={config[item.key] as boolean} onCheckedChange={v => onChange({ [item.key]: v })} />
                 </div>
               ))}
             </TabsContent>
@@ -284,7 +302,7 @@ function ComunicacaoSection() {
             <TabsContent value="config-voz" className="space-y-4">
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Voz padrão</Label>
-                <Select defaultValue="feminina-1">
+                <Select value={config.voiceSelected} onValueChange={v => onChange({ voiceSelected: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="feminina-1">Feminina Natural 1</SelectItem>
@@ -296,7 +314,7 @@ function ComunicacaoSection() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Velocidade da fala</Label>
-                <Select defaultValue="normal">
+                <Select value={config.voiceSpeed} onValueChange={v => onChange({ voiceSpeed: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="lenta">Lenta</SelectItem>
@@ -313,27 +331,29 @@ function ComunicacaoSection() {
   );
 }
 
-function HumanizacaoSection() {
+function HumanizacaoSection({ config, onChange }: SectionProps) {
+  const items = [
+    { key: 'simulateTyping' as const, label: 'Digitação simulada', desc: 'Mostra "digitando..." com tempo proporcional à mensagem' },
+    { key: 'vocabularyVariation' as const, label: 'Variação de vocabulário', desc: 'Evita repetir as mesmas palavras e expressões' },
+    { key: 'contextMemory' as const, label: 'Memória de contexto', desc: 'Lembra detalhes mencionados na conversa' },
+    { key: 'splitMessages' as const, label: 'Respostas parciais', desc: 'Divide respostas longas em mensagens menores' },
+    { key: 'audioResponses' as const, label: 'Respostas com áudio', desc: 'Envia áudios simulados em momentos estratégicos' },
+    { key: 'naturalReactions' as const, label: 'Reações naturais', desc: 'Usa interjeições e reações como "Que legal!" e "Entendi!"' },
+  ];
+
   return (
     <div className="space-y-6">
       <h2 className="font-display text-lg font-semibold text-foreground">Humanização</h2>
       <Card>
         <CardContent className="pt-6 space-y-4">
           <p className="text-sm text-muted-foreground">Configure como o agente simula comportamento humano nas conversas.</p>
-          {[
-            { label: 'Digitação simulada', desc: 'Mostra "digitando..." com tempo proporcional à mensagem', on: true },
-            { label: 'Variação de vocabulário', desc: 'Evita repetir as mesmas palavras e expressões', on: true },
-            { label: 'Memória de contexto', desc: 'Lembra detalhes mencionados na conversa', on: true },
-            { label: 'Respostas parciais', desc: 'Divide respostas longas em mensagens menores', on: false },
-            { label: 'Respostas com áudio', desc: 'Envia áudios simulados em momentos estratégicos', on: false },
-            { label: 'Reações naturais', desc: 'Usa interjeições e reações como "Que legal!" e "Entendi!"', on: true },
-          ].map(item => (
-            <div key={item.label} className="flex items-center justify-between p-3 rounded-lg bg-muted">
+          {items.map(item => (
+            <div key={item.key} className="flex items-center justify-between p-3 rounded-lg bg-muted">
               <div>
                 <p className="text-sm font-medium">{item.label}</p>
                 <p className="text-xs text-muted-foreground">{item.desc}</p>
               </div>
-              <Switch defaultChecked={item.on} />
+              <Switch checked={config[item.key] as boolean} onCheckedChange={v => onChange({ [item.key]: v })} />
             </div>
           ))}
         </CardContent>
@@ -342,7 +362,7 @@ function HumanizacaoSection() {
   );
 }
 
-function VozSection() {
+function VozSection({ config, onChange }: SectionProps) {
   return (
     <div className="space-y-6">
       <h2 className="font-display text-lg font-semibold text-foreground">Voz</h2>
@@ -350,7 +370,7 @@ function VozSection() {
         <CardContent className="pt-6 space-y-4">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Motor de voz</Label>
-            <Select defaultValue="elevenlabs">
+            <Select value={config.voiceEngine} onValueChange={v => onChange({ voiceEngine: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="elevenlabs">ElevenLabs</SelectItem>
@@ -361,7 +381,7 @@ function VozSection() {
           </div>
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Voz selecionada</Label>
-            <Select defaultValue="sofia">
+            <Select value={config.voiceSelected} onValueChange={v => onChange({ voiceSelected: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="sofia">Sofia - Feminina Natural</SelectItem>
@@ -375,7 +395,7 @@ function VozSection() {
               <p className="text-sm font-medium">Enviar áudios automaticamente</p>
               <p className="text-xs text-muted-foreground">Em momentos estratégicos, o agente envia áudio ao invés de texto</p>
             </div>
-            <Switch />
+            <Switch checked={config.autoAudio} onCheckedChange={v => onChange({ autoAudio: v })} />
           </div>
         </CardContent>
       </Card>
@@ -383,12 +403,8 @@ function VozSection() {
   );
 }
 
-function GatilhosSection() {
-  const [keywords, setKeywords] = useState<string[]>(['Quero saber mais']);
-  const [triggers, setTriggers] = useState([
-    { id: '1', title: 'Central de Atendimento WhatsApp', desc: 'Ative o agente quando o lead enviar mensagens específicas', open: true },
-    { id: '2', title: 'Disparador API Oficial WhatsApp', desc: 'Ativo o agente via API oficial do WhatsApp', open: false },
-  ]);
+function GatilhosSection({ config, onChange }: SectionProps) {
+  const [openTriggers, setOpenTriggers] = useState([true, false]);
 
   return (
     <div className="space-y-6">
@@ -408,29 +424,26 @@ function GatilhosSection() {
               <TabsTrigger value="externos" disabled>
                 <RefreshCw className="w-3.5 h-3.5 mr-1" /> Externos <Badge variant="outline" className="ml-1 text-[10px]">em breve</Badge>
               </TabsTrigger>
-              <TabsTrigger value="intencoes-tab" disabled>
-                <Target className="w-3.5 h-3.5 mr-1" /> Intenções <Badge variant="outline" className="ml-1 text-[10px]">em breve</Badge>
-              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="nativo" className="space-y-4">
-              {triggers.map(t => (
-                <div key={t.id} className="border border-border rounded-lg">
+              {['Central de Atendimento WhatsApp', 'Disparador API Oficial WhatsApp'].map((title, i) => (
+                <div key={title} className="border border-border rounded-lg">
                   <button
                     className="w-full flex items-center justify-between p-4 text-left"
-                    onClick={() => setTriggers(triggers.map(x => x.id === t.id ? { ...x, open: !x.open } : x))}
+                    onClick={() => setOpenTriggers(prev => prev.map((v, idx) => idx === i ? !v : v))}
                   >
                     <div>
-                      <h4 className="font-display font-semibold text-sm">{t.title}</h4>
-                      <p className="text-xs text-muted-foreground">{t.desc}</p>
+                      <h4 className="font-display font-semibold text-sm">{title}</h4>
+                      <p className="text-xs text-muted-foreground">Configure palavras-chave para ativar o agente</p>
                     </div>
-                    {t.open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    {openTriggers[i] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </button>
-                  {t.open && (
+                  {openTriggers[i] && (
                     <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
                       <div className="space-y-1.5">
                         <Label className="text-sm font-medium">Mensagem de Ativação</Label>
-                        <Select defaultValue="especifica">
+                        <Select value={config.triggerMode} onValueChange={v => onChange({ triggerMode: v })}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="qualquer">Qualquer Mensagem</SelectItem>
@@ -440,7 +453,7 @@ function GatilhosSection() {
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-sm font-medium">Tipo de lag</Label>
-                        <Select defaultValue="igual">
+                        <Select value={config.triggerMatchType} onValueChange={v => onChange({ triggerMatchType: v })}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="igual">Igual a (exato)</SelectItem>
@@ -451,7 +464,10 @@ function GatilhosSection() {
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-sm font-medium">Palavras-chave</Label>
-                        <KeywordInput keywords={keywords} onChange={setKeywords} />
+                        <KeywordInput
+                          keywords={config.keywords}
+                          onChange={kw => onChange({ keywords: kw })}
+                        />
                       </div>
                     </div>
                   )}
@@ -462,11 +478,11 @@ function GatilhosSection() {
             <TabsContent value="mensagem" className="space-y-4">
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Mensagem de boas-vindas</Label>
-                <Textarea defaultValue="Olá! 👋 Seja bem-vindo(a)! Como posso ajudá-lo(a) hoje?" className="min-h-[80px]" />
+                <Textarea value={config.welcomeMsg} onChange={e => onChange({ welcomeMsg: e.target.value })} className="min-h-[80px]" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Mensagem de encerramento</Label>
-                <Textarea defaultValue="Foi um prazer ajudá-lo(a)! Se precisar de algo mais, estou por aqui. 😊" className="min-h-[80px]" />
+                <Textarea value={config.closingMsg} onChange={e => onChange({ closingMsg: e.target.value })} className="min-h-[80px]" />
               </div>
             </TabsContent>
           </Tabs>
@@ -476,7 +492,7 @@ function GatilhosSection() {
   );
 }
 
-function InstrucoesSection() {
+function InstrucoesSection({ config, onChange }: SectionProps) {
   return (
     <div className="space-y-6">
       <h2 className="font-display text-lg font-semibold text-foreground">Instruções</h2>
@@ -486,14 +502,16 @@ function InstrucoesSection() {
             <Label className="text-sm font-medium">Prompt do Sistema</Label>
             <p className="text-xs text-muted-foreground">Instruções gerais de comportamento da IA</p>
             <Textarea
-              defaultValue="Você é uma assistente de vendas profissional e empática. Seu objetivo é qualificar leads e agendar reuniões. Seja amigável, use linguagem simples e direta. Faça perguntas para entender a necessidade do cliente antes de apresentar soluções."
+              value={config.systemPrompt}
+              onChange={e => onChange({ systemPrompt: e.target.value })}
               className="min-h-[150px] font-mono text-sm"
             />
           </div>
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Descrição do produto/serviço</Label>
             <Textarea
-              defaultValue="Descreva aqui o que sua empresa oferece para que a IA possa responder com precisão."
+              value={config.productDescription}
+              onChange={e => onChange({ productDescription: e.target.value })}
               className="min-h-[100px]"
             />
           </div>
@@ -501,14 +519,16 @@ function InstrucoesSection() {
             <Label className="text-sm font-medium">Tópicos proibidos</Label>
             <p className="text-xs text-muted-foreground">Assuntos que a IA NÃO deve abordar</p>
             <Textarea
-              defaultValue="Preços específicos sem aprovação, descontos não autorizados, informações de concorrentes, dados internos da empresa"
+              value={config.forbiddenTopics}
+              onChange={e => onChange({ forbiddenTopics: e.target.value })}
               className="min-h-[80px]"
             />
           </div>
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Perguntas de qualificação</Label>
             <Textarea
-              defaultValue="1. Qual é o seu principal desafio atualmente?&#10;2. Qual o tamanho da sua equipe?&#10;3. Já utiliza alguma solução semelhante?&#10;4. Qual o prazo para implementação?"
+              value={config.qualificationQuestions}
+              onChange={e => onChange({ qualificationQuestions: e.target.value })}
               className="min-h-[120px]"
             />
           </div>
@@ -518,7 +538,7 @@ function InstrucoesSection() {
   );
 }
 
-function BaseConhecimentoSection() {
+function BaseConhecimentoSection({ config, onChange }: SectionProps) {
   return (
     <div className="space-y-6">
       <h2 className="font-display text-lg font-semibold text-foreground">Base de Conhecimento</h2>
@@ -536,13 +556,23 @@ function BaseConhecimentoSection() {
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">URL para consulta</Label>
             <div className="flex gap-2">
-              <Input placeholder="https://seusite.com.br/faq" className="flex-1" />
+              <Input
+                value={config.knowledgeUrl}
+                onChange={e => onChange({ knowledgeUrl: e.target.value })}
+                placeholder="https://seusite.com.br/faq"
+                className="flex-1"
+              />
               <Button variant="outline"><Plus className="w-4 h-4" /></Button>
             </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">FAQ manual</Label>
-            <Textarea placeholder="Pergunta: Como funciona o serviço?&#10;Resposta: ..." className="min-h-[120px]" />
+            <Textarea
+              value={config.faqContent}
+              onChange={e => onChange({ faqContent: e.target.value })}
+              placeholder="Pergunta: Como funciona o serviço?&#10;Resposta: ..."
+              className="min-h-[120px]"
+            />
           </div>
         </CardContent>
       </Card>
@@ -550,7 +580,7 @@ function BaseConhecimentoSection() {
   );
 }
 
-function SeguirSection() {
+function SeguirSection({ config, onChange }: SectionProps) {
   return (
     <div className="space-y-6">
       <h2 className="font-display text-lg font-semibold text-foreground">Follow-up (Seguir)</h2>
@@ -561,28 +591,28 @@ function SeguirSection() {
               <p className="text-sm font-medium">Follow-up automático</p>
               <p className="text-xs text-muted-foreground">Enviar mensagens de acompanhamento quando não há resposta</p>
             </div>
-            <Switch defaultChecked />
+            <Switch checked={config.followUpEnabled} onCheckedChange={v => onChange({ followUpEnabled: v })} />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Primeiro follow-up após</Label>
               <div className="flex items-center gap-2">
-                <Input type="number" defaultValue="2" className="w-20" />
+                <Input type="number" value={config.followUpDelayHours} onChange={e => onChange({ followUpDelayHours: Number(e.target.value) })} className="w-20" />
                 <span className="text-sm text-muted-foreground">horas</span>
               </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Máximo de tentativas</Label>
-              <Input type="number" defaultValue="3" className="w-20" />
+              <Input type="number" value={config.maxAttempts} onChange={e => onChange({ maxAttempts: Number(e.target.value) })} className="w-20" />
             </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Mensagem de follow-up</Label>
-            <Textarea defaultValue="Oi! Vi que não conseguimos conversar ainda. Posso ajudar com alguma dúvida? 😊" className="min-h-[80px]" />
+            <Textarea value={config.followUpMsg} onChange={e => onChange({ followUpMsg: e.target.value })} className="min-h-[80px]" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Mensagem de última tentativa</Label>
-            <Textarea defaultValue="Olá! Só passando para avisar que estou por aqui caso precise. Sem compromisso! 🙂" className="min-h-[80px]" />
+            <Textarea value={config.finalMsg} onChange={e => onChange({ finalMsg: e.target.value })} className="min-h-[80px]" />
           </div>
         </CardContent>
       </Card>
@@ -590,7 +620,7 @@ function SeguirSection() {
   );
 }
 
-function AgendaSection() {
+function AgendaSection({ config, onChange }: SectionProps) {
   return (
     <div className="space-y-6">
       <h2 className="font-display text-lg font-semibold text-foreground">Agenda</h2>
@@ -601,11 +631,11 @@ function AgendaSection() {
               <p className="text-sm font-medium">Agendamento automático</p>
               <p className="text-xs text-muted-foreground">Oferecer horários disponíveis para reunião</p>
             </div>
-            <Switch defaultChecked />
+            <Switch checked={config.autoSchedule} onCheckedChange={v => onChange({ autoSchedule: v })} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Integração com calendário</Label>
-            <Select defaultValue="google">
+            <Select value={config.calendarIntegration} onValueChange={v => onChange({ calendarIntegration: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="google">Google Calendar</SelectItem>
@@ -617,7 +647,7 @@ function AgendaSection() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Duração padrão da reunião</Label>
-              <Select defaultValue="30">
+              <Select value={config.meetingDuration} onValueChange={v => onChange({ meetingDuration: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="15">15 minutos</SelectItem>
@@ -629,7 +659,7 @@ function AgendaSection() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Intervalo entre reuniões</Label>
-              <Select defaultValue="15">
+              <Select value={config.meetingInterval} onValueChange={v => onChange({ meetingInterval: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="5">5 minutos</SelectItem>
@@ -642,7 +672,7 @@ function AgendaSection() {
           </div>
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Link da reunião (padrão)</Label>
-            <Input placeholder="https://meet.google.com/..." />
+            <Input value={config.meetingLink} onChange={e => onChange({ meetingLink: e.target.value })} placeholder="https://meet.google.com/..." />
           </div>
         </CardContent>
       </Card>
@@ -650,26 +680,25 @@ function AgendaSection() {
   );
 }
 
-function IntencoesSection() {
+function IntencoesSection({ config, onChange }: SectionProps) {
+  const toggleIntent = (idx: number, active: boolean) => {
+    const updated = config.intents.map((it, i) => i === idx ? { ...it, active } : it);
+    onChange({ intents: updated });
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="font-display text-lg font-semibold text-foreground">Intenções</h2>
       <Card>
         <CardContent className="pt-6 space-y-4">
           <p className="text-sm text-muted-foreground">Configure as intenções que o agente deve identificar durante a conversa.</p>
-          {[
-            { intent: 'Interesse em comprar', action: 'Apresentar produto e agendar demo', active: true },
-            { intent: 'Pedido de preço', action: 'Coletar info e encaminhar para vendedor', active: true },
-            { intent: 'Suporte técnico', action: 'Redirecionar para equipe de suporte', active: true },
-            { intent: 'Reclamação', action: 'Registrar e escalar para gerência', active: false },
-            { intent: 'Cancelamento', action: 'Oferecer retenção e encaminhar para CS', active: false },
-          ].map(item => (
+          {config.intents.map((item, idx) => (
             <div key={item.intent} className="flex items-center justify-between p-3 rounded-lg bg-muted">
               <div>
                 <p className="text-sm font-medium">{item.intent}</p>
                 <p className="text-xs text-muted-foreground">Ação: {item.action}</p>
               </div>
-              <Switch defaultChecked={item.active} />
+              <Switch checked={item.active} onCheckedChange={v => toggleIntent(idx, v)} />
             </div>
           ))}
           <Button variant="outline" className="w-full gap-2">
@@ -684,21 +713,49 @@ function IntencoesSection() {
 // --- Main Component ---
 
 export function AgentConfigView() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [activeSection, setActiveSection] = useState('configuracoes');
+  const [config, setConfig] = useState<FullAgentConfig>({ ...DEFAULT_AGENT_CONFIG });
+
+  const { data: savedConfig, isLoading } = useQuery({
+    queryKey: ['agent-config'],
+    queryFn: getAgentConfig,
+  });
+
+  useEffect(() => {
+    if (savedConfig) setConfig(savedConfig);
+  }, [savedConfig]);
+
+  const { mutate: saveConfig, isPending } = useMutation({
+    mutationFn: updateAgentConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agent-config'] });
+      toast({ title: 'Configurações salvas!', description: 'Agente atualizado com sucesso.' });
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const onChange = (partial: Partial<FullAgentConfig>) =>
+    setConfig(prev => ({ ...prev, ...partial }));
+
+  const sectionProps: SectionProps = { config, onChange };
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'configuracoes': return <ConfiguracoesSection />;
-      case 'comunicacao': return <ComunicacaoSection />;
-      case 'humanizacao': return <HumanizacaoSection />;
-      case 'voz': return <VozSection />;
-      case 'gatilhos': return <GatilhosSection />;
-      case 'instrucoes': return <InstrucoesSection />;
-      case 'base-conhecimento': return <BaseConhecimentoSection />;
-      case 'seguir': return <SeguirSection />;
-      case 'agenda': return <AgendaSection />;
-      case 'intencoes': return <IntencoesSection />;
-      default: return <ConfiguracoesSection />;
+      case 'configuracoes': return <ConfiguracoesSection {...sectionProps} />;
+      case 'comunicacao': return <ComunicacaoSection {...sectionProps} />;
+      case 'humanizacao': return <HumanizacaoSection {...sectionProps} />;
+      case 'voz': return <VozSection {...sectionProps} />;
+      case 'gatilhos': return <GatilhosSection {...sectionProps} />;
+      case 'instrucoes': return <InstrucoesSection {...sectionProps} />;
+      case 'base-conhecimento': return <BaseConhecimentoSection {...sectionProps} />;
+      case 'seguir': return <SeguirSection {...sectionProps} />;
+      case 'agenda': return <AgendaSection {...sectionProps} />;
+      case 'intencoes': return <IntencoesSection {...sectionProps} />;
+      default: return <ConfiguracoesSection {...sectionProps} />;
     }
   };
 
@@ -740,9 +797,16 @@ export function AgentConfigView() {
       {/* Content area */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="font-display text-xl font-bold text-foreground">Configuração do Agente</h1>
-          <Button className="gap-2">
-            <Save className="w-4 h-4" /> Salvar configurações
+          <div>
+            <h1 className="font-display text-xl font-bold text-foreground">Configuração do Agente</h1>
+            {isLoading && <p className="text-xs text-muted-foreground mt-0.5">Carregando configurações...</p>}
+          </div>
+          <Button className="gap-2" onClick={() => saveConfig(config)} disabled={isPending}>
+            {isPending ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
+            ) : (
+              <><Save className="w-4 h-4" /> Salvar configurações</>
+            )}
           </Button>
         </div>
         {renderSection()}

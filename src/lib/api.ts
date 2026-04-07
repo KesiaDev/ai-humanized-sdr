@@ -179,8 +179,8 @@ export const createAppointment = async (input: Omit<Appointment, 'id'>): Promise
       title: input.title,
       lead_id: input.leadId,
       lead_name: input.leadName,
-      date: input.date,
-      time: input.time,
+      event_date: input.date,
+      event_time: input.time,
       type: input.type,
     }])
     .select()
@@ -191,8 +191,8 @@ export const createAppointment = async (input: Omit<Appointment, 'id'>): Promise
     title: data.title,
     leadId: data.lead_id,
     leadName: data.lead_name,
-    date: data.date,
-    time: data.time,
+    date: data.event_date ?? data.date,
+    time: data.event_time ?? data.time,
     type: data.type,
   };
 };
@@ -227,69 +227,157 @@ export const updateLeadStatus = async (phone: string, status: string, score?: nu
 
 // ── Configuração do Agente ─────────────────────────────────
 
-export interface AgentConfig {
-  agentName: string;
-  companyName: string;
-  services: string;
-  businessHours: string;
-  address: string;
-  humanWhatsApp: string;
-  zapiInstanceId: string;
-  zapiToken: string;
-  zapiClientToken: string;
-  n8nWebhookUrl: string;
+export interface FullAgentConfig {
+  // Status
   active: boolean;
+  // Info básicas
+  agentName: string;
+  agentDescription: string;
+  role: string;
+  companyName: string;
+  language: string;
+  // Horário
+  alwaysOn: boolean;
+  startTime: string;
+  endTime: string;
+  offHoursMsg: string;
+  // Canais
+  channelWhatsApp: boolean;
+  channelInstagram: boolean;
+  channelFacebook: boolean;
+  channelSiteChat: boolean;
+  channelEmail: boolean;
+  // Credenciais
+  apiKey: string;
+  webhookUrl: string;
+  // Comunicação
+  bufferSec: number;
+  timeBetweenSec: number;
+  errorResponse: string;
+  tone: string;
+  useEmojis: boolean;
+  maxResponseLength: number;
+  // Humanização
+  simulateTyping: boolean;
+  vocabularyVariation: boolean;
+  contextMemory: boolean;
+  splitMessages: boolean;
+  audioResponses: boolean;
+  naturalReactions: boolean;
+  // Voz
+  voiceEngine: string;
+  voiceSelected: string;
+  voiceSpeed: string;
+  autoAudio: boolean;
+  // Gatilhos
+  triggerMode: string;
+  triggerMatchType: string;
+  keywords: string[];
+  welcomeMsg: string;
+  closingMsg: string;
+  // Instruções
+  systemPrompt: string;
+  productDescription: string;
+  forbiddenTopics: string;
+  qualificationQuestions: string;
+  // Base de Conhecimento
+  faqContent: string;
+  knowledgeUrl: string;
+  // Seguir
+  followUpEnabled: boolean;
+  followUpDelayHours: number;
+  maxAttempts: number;
+  followUpMsg: string;
+  finalMsg: string;
+  // Agenda
+  autoSchedule: boolean;
+  calendarIntegration: string;
+  meetingDuration: string;
+  meetingInterval: string;
+  meetingLink: string;
+  // Intenções
+  intents: { intent: string; action: string; active: boolean }[];
 }
 
-export const getAgentConfig = async (): Promise<AgentConfig> => {
-  const { data, error } = await supabase
-    .from('agent_config')
-    .select('*')
-    .limit(1)
-    .single();
-  if (error) {
-    // Table may not exist yet — return defaults
-    return {
-      agentName: '', companyName: '', services: '', businessHours: '',
-      address: '', humanWhatsApp: '', zapiInstanceId: '', zapiToken: '',
-      zapiClientToken: '', n8nWebhookUrl: '', active: false,
-    };
-  }
-  return {
-    agentName: data.agent_name ?? '',
-    companyName: data.company_name ?? '',
-    services: data.services ?? '',
-    businessHours: data.business_hours ?? '',
-    address: data.address ?? '',
-    humanWhatsApp: data.human_whatsapp ?? '',
-    zapiInstanceId: data.zapi_instance_id ?? '',
-    zapiToken: data.zapi_token ?? '',
-    zapiClientToken: data.zapi_client_token ?? '',
-    n8nWebhookUrl: data.n8n_webhook_url ?? '',
-    active: data.active ?? false,
-  };
+export const DEFAULT_AGENT_CONFIG: FullAgentConfig = {
+  active: true,
+  agentName: 'Ana',
+  agentDescription: 'Assistente comercial da Prevensul',
+  role: 'Consultora de Vendas',
+  companyName: 'Prevensul Comercial Elétrica',
+  language: 'pt-br',
+  alwaysOn: true,
+  startTime: '08:00',
+  endTime: '18:00',
+  offHoursMsg: 'Obrigado pelo contato! Atendemos seg-sex 8h-18h. Retornamos em breve!',
+  channelWhatsApp: true,
+  channelInstagram: false,
+  channelFacebook: false,
+  channelSiteChat: true,
+  channelEmail: false,
+  apiKey: '',
+  webhookUrl: '',
+  bufferSec: 10,
+  timeBetweenSec: 3,
+  errorResponse: 'Desculpa, não entendi. Pode enviar de outra forma?',
+  tone: 'amigavel',
+  useEmojis: true,
+  maxResponseLength: 500,
+  simulateTyping: true,
+  vocabularyVariation: true,
+  contextMemory: true,
+  splitMessages: false,
+  audioResponses: false,
+  naturalReactions: true,
+  voiceEngine: 'elevenlabs',
+  voiceSelected: 'sofia',
+  voiceSpeed: 'normal',
+  autoAudio: false,
+  triggerMode: 'especifica',
+  triggerMatchType: 'igual',
+  keywords: ['Quero saber mais'],
+  welcomeMsg: 'Olá! 👋 Seja bem-vindo(a)! Como posso ajudá-lo(a) hoje?',
+  closingMsg: 'Foi um prazer ajudá-lo(a)! Se precisar de algo mais, estou por aqui. 😊',
+  systemPrompt: 'Você é uma assistente de vendas profissional e empática. Seu objetivo é qualificar leads e agendar reuniões. Seja amigável, use linguagem simples e direta.',
+  productDescription: '',
+  forbiddenTopics: 'Preços específicos sem aprovação, descontos não autorizados, informações de concorrentes',
+  qualificationQuestions: '1. Qual é o seu principal desafio atualmente?\n2. Qual o tamanho da sua equipe?\n3. Já utiliza alguma solução semelhante?\n4. Qual o prazo para implementação?',
+  faqContent: '',
+  knowledgeUrl: '',
+  followUpEnabled: true,
+  followUpDelayHours: 2,
+  maxAttempts: 3,
+  followUpMsg: 'Oi! Vi que não conseguimos conversar ainda. Posso ajudar? 😊',
+  finalMsg: 'Olá! Só passando para avisar que estou por aqui caso precise. Sem compromisso! 🙂',
+  autoSchedule: true,
+  calendarIntegration: 'google',
+  meetingDuration: '30',
+  meetingInterval: '15',
+  meetingLink: '',
+  intents: [
+    { intent: 'Interesse em comprar', action: 'Apresentar produto e agendar demo', active: true },
+    { intent: 'Pedido de preço', action: 'Coletar info e encaminhar para vendedor', active: true },
+    { intent: 'Suporte técnico', action: 'Redirecionar para equipe de suporte', active: true },
+    { intent: 'Reclamação', action: 'Registrar e escalar para gerência', active: false },
+    { intent: 'Cancelamento', action: 'Oferecer retenção e encaminhar para CS', active: false },
+  ],
 };
 
-export const updateAgentConfig = async (config: Partial<AgentConfig>): Promise<AgentConfig> => {
-  const { data, error } = await supabase
+export const getAgentConfig = async (): Promise<FullAgentConfig> => {
+  const { data } = await supabase
     .from('agent_config')
-    .upsert([{
-      agent_name: config.agentName,
-      company_name: config.companyName,
-      services: config.services,
-      business_hours: config.businessHours,
-      address: config.address,
-      human_whatsapp: config.humanWhatsApp,
-      zapi_instance_id: config.zapiInstanceId,
-      zapi_token: config.zapiToken,
-      zapi_client_token: config.zapiClientToken,
-      n8n_webhook_url: config.n8nWebhookUrl,
-      active: config.active,
-    }])
-    .select()
-    .single();
+    .select('config')
+    .eq('id', 1)
+    .maybeSingle();
+  if (!data?.config) return { ...DEFAULT_AGENT_CONFIG };
+  return { ...DEFAULT_AGENT_CONFIG, ...(data.config as Partial<FullAgentConfig>) };
+};
+
+export const updateAgentConfig = async (config: FullAgentConfig): Promise<void> => {
+  const { error } = await supabase
+    .from('agent_config')
+    .upsert({ id: 1, config: config as unknown as Record<string, unknown>, updated_at: new Date().toISOString() });
   if (error) throw new Error(error.message);
-  return getAgentConfig();
 };
 
 // ── Mappers ────────────────────────────────────────────────
