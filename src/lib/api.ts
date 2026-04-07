@@ -76,12 +76,12 @@ export const updateLead = async (id: string, update: Partial<Lead>): Promise<Lea
 
   const { data, error } = await supabase
     .from('leads')
-    .update(dbUpdate)
+    .update(dbUpdate as any)
     .eq('id', id)
     .select()
     .single();
   if (error) throw new Error(error.message);
-  return mapLead(data);
+  return mapLead(data as any);
 };
 
 export const updateLeadScore = (id: string, score: number): Promise<Lead> =>
@@ -367,19 +367,19 @@ export const DEFAULT_AGENT_CONFIG: FullAgentConfig = {
 };
 
 export const getAgentConfig = async (): Promise<FullAgentConfig> => {
-  const { data } = await supabase
-    .from('agent_config' as any)
+  const { data } = await (supabase as any)
+    .from('agent_config')
     .select('config')
-    .eq('id', 1 as any)
+    .eq('id', 1)
     .maybeSingle();
   if (!data?.config) return { ...DEFAULT_AGENT_CONFIG };
   return { ...DEFAULT_AGENT_CONFIG, ...(data.config as Partial<FullAgentConfig>) };
 };
 
 export const updateAgentConfig = async (config: FullAgentConfig): Promise<void> => {
-  const { error } = await supabase
-    .from('agent_config' as any)
-    .upsert({ id: 1, config: config as unknown as Record<string, unknown>, updated_at: new Date().toISOString() } as any);
+  const { error } = await (supabase as any)
+    .from('agent_config')
+    .upsert({ id: 1, config: config as unknown as Record<string, unknown>, updated_at: new Date().toISOString() });
   if (error) throw new Error(error.message);
 };
 
