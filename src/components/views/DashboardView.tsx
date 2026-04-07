@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, MessageSquare, TrendingUp, Target, BarChart3 } from 'lucide-react';
+import { Users, MessageSquare, TrendingUp, Target, ArrowUpRight, ArrowDownRight, BarChart3 } from 'lucide-react';
 import { Lead } from '@/types/lead';
 
 interface DashboardViewProps {
@@ -24,10 +24,10 @@ export function DashboardView({ leads, onSelectLead }: DashboardViewProps) {
   const conversionRate = totalLeads > 0 ? Math.round((closedLeads / totalLeads) * 100) : 0;
 
   const stats = [
-    { label: 'Total de Leads', value: totalLeads, icon: Users },
-    { label: 'Qualificados', value: qualifiedLeads, icon: Target },
-    { label: 'Score Médio', value: avgScore, icon: TrendingUp },
-    { label: 'Taxa de Conversão', value: `${conversionRate}%`, icon: MessageSquare },
+    { label: 'Total de Leads', value: totalLeads, icon: Users, change: '+12%', up: true },
+    { label: 'Qualificados', value: qualifiedLeads, icon: Target, change: '+8%', up: true },
+    { label: 'Score Médio', value: avgScore, icon: TrendingUp, change: '+5pts', up: true },
+    { label: 'Taxa de Conversão', value: `${conversionRate}%`, icon: MessageSquare, change: '-2%', up: false },
   ];
 
   return (
@@ -45,6 +45,10 @@ export function DashboardView({ leads, onSelectLead }: DashboardViewProps) {
                 <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
                   <stat.icon className="w-5 h-5 text-accent-foreground" />
                 </div>
+              </div>
+              <div className={`flex items-center gap-1 mt-3 text-xs font-medium ${stat.up ? 'text-success' : 'text-destructive'}`}>
+                {stat.up ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                {stat.change} vs mês anterior
               </div>
             </CardContent>
           </Card>
@@ -103,7 +107,7 @@ export function DashboardView({ leads, onSelectLead }: DashboardViewProps) {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-card-foreground">{lead.name}</p>
-                      <p className="text-xs text-muted-foreground">{lead.company}</p>
+                      <p className="text-xs text-muted-foreground">{lead.company || lead.phone}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

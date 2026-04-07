@@ -114,10 +114,16 @@ export const getLeadStats = async (): Promise<LeadStats> => {
 export const getConversations = async (): Promise<Conversation[]> => {
   const { data, error } = await supabase
     .from('conversations')
-    .select('*, messages(*)')
-    .order('created_at', { ascending: false });
+    .select('*, messages(*), leads(name, phone)')
+    .order('updated_at', { ascending: false });
   if (error) throw new Error(error.message);
-  return (data ?? []).map(mapConversation);
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const lead = row.leads as Record<string, unknown> | null;
+    if (lead && !row.lead_name) {
+      return mapConversation({ ...row, lead_name: lead.name || lead.phone || 'Lead' });
+    }
+    return mapConversation(row);
+  });
 };
 
 export const getConversation = async (leadId: string): Promise<Conversation> => {
@@ -416,12 +422,20 @@ function mapMessage(row: Record<string, unknown>): Message {
 }
 
 function mapConversation(row: Record<string, unknown>): Conversation {
-  const msgs = Array.isArray(row.messages) ? row.messages.map(mapMessage) : [];
-  const lastMsg = msgs.length > 0 ? msgs[msgs.length - 1].timestamp : new Date();
+  const msgs = Array.isArray(row.messages)
+    ? row.messages
+        .map(mapMessage)
+        .sort((a: Message, b: Message) => a.timestamp.getTime() - b.timestamp.getTime())
+    : [];
+  const lastMsg = msgs.length > 0 ? msgs[msgs.length - 1].timestamp
+    : row.updated_at ? new Date(row.updated_at as string)
+    : new Date();
+  const lead = row.leads as Record<string, unknown> | null;
+  const leadName = String(row.lead_name ?? lead?.name ?? lead?.phone ?? 'Lead');
   return {
     id: String(row.id ?? ''),
     leadId: String(row.lead_id ?? ''),
-    leadName: String(row.lead_name ?? ''),
+    leadName,
     messages: msgs,
     status: (row.status as Conversation['status']) ?? 'ativa',
     lastMessage: lastMsg,
