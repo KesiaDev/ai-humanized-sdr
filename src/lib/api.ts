@@ -58,14 +58,30 @@ export const createLead = async (input: Omit<Lead, 'id' | 'createdAt'>): Promise
 };
 
 export const updateLead = async (id: string, update: Partial<Lead>): Promise<Lead> => {
+  // Map camelCase to snake_case for DB
+  const dbUpdate: Record<string, unknown> = {};
+  if (update.name !== undefined) dbUpdate.name = update.name;
+  if (update.email !== undefined) dbUpdate.email = update.email;
+  if (update.phone !== undefined) dbUpdate.phone = update.phone;
+  if (update.company !== undefined) dbUpdate.company = update.company;
+  if (update.position !== undefined) dbUpdate.position = update.position;
+  if (update.source !== undefined) dbUpdate.source = update.source;
+  if (update.status !== undefined) dbUpdate.status = update.status;
+  if (update.urgency !== undefined) dbUpdate.urgency = update.urgency;
+  if (update.score !== undefined) dbUpdate.score = update.score;
+  if (update.notes !== undefined) dbUpdate.notes = update.notes;
+  if (update.tags !== undefined) dbUpdate.tags = update.tags;
+  if (update.lastContact !== undefined) dbUpdate.last_contact = update.lastContact ? (update.lastContact as Date).toISOString() : null;
+  if (update.nextFollowUp !== undefined) dbUpdate.next_follow_up = update.nextFollowUp ? (update.nextFollowUp as Date).toISOString() : null;
+
   const { data, error } = await supabase
     .from('leads')
-    .update(update)
+    .update(dbUpdate as any)
     .eq('id', id)
     .select()
     .single();
   if (error) throw new Error(error.message);
-  return mapLead(data);
+  return mapLead(data as any);
 };
 
 export const updateLeadScore = (id: string, score: number): Promise<Lead> =>
@@ -125,9 +141,16 @@ export const sendMessage = async (leadId: string, content: string): Promise<Mess
     .single();
 
   if (!conv) {
+    // Get lead name for conversation
+    const { data: leadData } = await supabase
+      .from('leads')
+      .select('name')
+      .eq('id', leadId)
+      .single();
+
     const { data: newConv, error: convErr } = await supabase
       .from('conversations')
-      .insert([{ lead_id: leadId, status: 'ativa' }])
+      .insert([{ lead_id: leadId, lead_name: leadData?.name ?? 'Lead', status: 'ativa' }])
       .select()
       .single();
     if (convErr) throw new Error(convErr.message);
@@ -136,7 +159,7 @@ export const sendMessage = async (leadId: string, content: string): Promise<Mess
 
   const { data, error } = await supabase
     .from('messages')
-    .insert([{ conversation_id: conv.id, content, sender: 'sdr' }])
+    .insert([{ conversation_id: conv.id, lead_id: leadId, content, sender: 'sdr' }])
     .select()
     .single();
   if (error) throw new Error(error.message);
@@ -161,13 +184,13 @@ export const getAppointments = async (): Promise<Appointment[]> => {
     .select('*')
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
-  return (data ?? []).map((e: Record<string, unknown>) => ({
+  return (data ?? []).map((e) => ({
     id: String(e.id ?? ''),
     title: String(e.title ?? ''),
     leadId: String(e.lead_id ?? ''),
     leadName: String(e.lead_name ?? ''),
-    date: String(e.date ?? ''),
-    time: String(e.time ?? ''),
+    date: String(e.event_date ?? ''),
+    time: String(e.event_time ?? ''),
     type: (e.type as Appointment['type']) ?? 'meeting',
   }));
 };
@@ -189,18 +212,18 @@ export const createAppointment = async (input: Omit<Appointment, 'id'>): Promise
   return {
     id: String(data.id),
     title: data.title,
-    leadId: data.lead_id,
-    leadName: data.lead_name,
-    date: data.event_date ?? data.date,
-    time: data.event_time ?? data.time,
-    type: data.type,
+    leadId: data.lead_id ?? '',
+    leadName: data.lead_name ?? '',
+    date: data.event_date,
+    time: data.event_time,
+    type: data.type as Appointment['type'],
   };
 };
 
 // ── WhatsApp / N8N ─────────────────────────────────────────
 
 const N8N_WEBHOOK = 'https://ujypxavysrxbdkdapenv.supabase.co/functions/v1/n8n-webhook';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqeXB4YXZ5c3J4YmRrZGFwZW52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0Njg0OTgsImV4cCI6MjA5MTA0NDQ5OH0.DdyTqAFUw-K13xBW2G-WhI8-hGODCwawTwz4_2nVb0w';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqeXB4YXZ5c3J4YmRrZGFwZW52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0Njg0OTgsImV4cCI6MjA5MTA0NDQ5OH0.DdyTqAFUw-K13xBW2G-WhI8-hGODCwawTwz4_2nVb0w';
 
 const webhookHeaders = {
   'Content-Type': 'application/json',
@@ -228,92 +251,78 @@ export const updateLeadStatus = async (phone: string, status: string, score?: nu
 // ── Configuração do Agente ─────────────────────────────────
 
 export interface FullAgentConfig {
-  // Status
   active: boolean;
-  // Info básicas
   agentName: string;
   agentDescription: string;
   role: string;
   companyName: string;
   language: string;
-  // Horário
   alwaysOn: boolean;
   startTime: string;
   endTime: string;
   offHoursMsg: string;
-  // Canais
   channelWhatsApp: boolean;
   channelInstagram: boolean;
   channelFacebook: boolean;
   channelSiteChat: boolean;
   channelEmail: boolean;
-  // Credenciais
   apiKey: string;
   webhookUrl: string;
-  // Comunicação
   bufferSec: number;
   timeBetweenSec: number;
   errorResponse: string;
   tone: string;
   useEmojis: boolean;
   maxResponseLength: number;
-  // Humanização
   simulateTyping: boolean;
   vocabularyVariation: boolean;
   contextMemory: boolean;
   splitMessages: boolean;
   audioResponses: boolean;
   naturalReactions: boolean;
-  // Voz
   voiceEngine: string;
   voiceSelected: string;
   voiceSpeed: string;
   autoAudio: boolean;
-  // Gatilhos
   triggerMode: string;
   triggerMatchType: string;
   keywords: string[];
   welcomeMsg: string;
   closingMsg: string;
-  // Instruções
   systemPrompt: string;
   productDescription: string;
   forbiddenTopics: string;
   qualificationQuestions: string;
-  // Base de Conhecimento
   faqContent: string;
   knowledgeUrl: string;
-  // Seguir
   followUpEnabled: boolean;
   followUpDelayHours: number;
   maxAttempts: number;
   followUpMsg: string;
   finalMsg: string;
-  // Agenda
   autoSchedule: boolean;
   calendarIntegration: string;
   meetingDuration: string;
   meetingInterval: string;
   meetingLink: string;
-  // Intenções
   intents: { intent: string; action: string; active: boolean }[];
 }
 
 export const DEFAULT_AGENT_CONFIG: FullAgentConfig = {
   active: true,
-  agentName: 'Ana',
-  agentDescription: 'Assistente comercial da Prevensul',
-  role: 'Consultora de Vendas',
-  companyName: 'Prevensul Comercial Elétrica',
+  agentName: '',
+  agentDescription: '',
+  role: '',
+  companyName: '',
   language: 'pt-br',
   alwaysOn: true,
   startTime: '08:00',
   endTime: '18:00',
-  offHoursMsg: 'Obrigado pelo contato! Atendemos seg-sex 8h-18h. Retornamos em breve!',
-  channelWhatsApp: true,
+  offHoursMsg: 'Obrigado pelo contato! Retornamos em breve!',
+  channelWhatsApp: false,
   channelInstagram: false,
   channelFacebook: false,
-  channelSiteChat: true,
+  channelSiteChat: false,
   channelEmail: false,
   apiKey: '',
   webhookUrl: '',
@@ -335,36 +344,30 @@ export const DEFAULT_AGENT_CONFIG: FullAgentConfig = {
   autoAudio: false,
   triggerMode: 'especifica',
   triggerMatchType: 'igual',
-  keywords: ['Quero saber mais'],
-  welcomeMsg: 'Olá! 👋 Seja bem-vindo(a)! Como posso ajudá-lo(a) hoje?',
-  closingMsg: 'Foi um prazer ajudá-lo(a)! Se precisar de algo mais, estou por aqui. 😊',
-  systemPrompt: 'Você é uma assistente de vendas profissional e empática. Seu objetivo é qualificar leads e agendar reuniões. Seja amigável, use linguagem simples e direta.',
+  keywords: [],
+  welcomeMsg: '',
+  closingMsg: '',
+  systemPrompt: '',
   productDescription: '',
-  forbiddenTopics: 'Preços específicos sem aprovação, descontos não autorizados, informações de concorrentes',
-  qualificationQuestions: '1. Qual é o seu principal desafio atualmente?\n2. Qual o tamanho da sua equipe?\n3. Já utiliza alguma solução semelhante?\n4. Qual o prazo para implementação?',
+  forbiddenTopics: '',
+  qualificationQuestions: '',
   faqContent: '',
   knowledgeUrl: '',
   followUpEnabled: true,
   followUpDelayHours: 2,
   maxAttempts: 3,
-  followUpMsg: 'Oi! Vi que não conseguimos conversar ainda. Posso ajudar? 😊',
-  finalMsg: 'Olá! Só passando para avisar que estou por aqui caso precise. Sem compromisso! 🙂',
-  autoSchedule: true,
+  followUpMsg: '',
+  finalMsg: '',
+  autoSchedule: false,
   calendarIntegration: 'google',
   meetingDuration: '30',
   meetingInterval: '15',
   meetingLink: '',
-  intents: [
-    { intent: 'Interesse em comprar', action: 'Apresentar produto e agendar demo', active: true },
-    { intent: 'Pedido de preço', action: 'Coletar info e encaminhar para vendedor', active: true },
-    { intent: 'Suporte técnico', action: 'Redirecionar para equipe de suporte', active: true },
-    { intent: 'Reclamação', action: 'Registrar e escalar para gerência', active: false },
-    { intent: 'Cancelamento', action: 'Oferecer retenção e encaminhar para CS', active: false },
-  ],
+  intents: [],
 };
 
 export const getAgentConfig = async (): Promise<FullAgentConfig> => {
-  const { data } = await supabase
+  const { data } = await (supabase as any)
     .from('agent_config')
     .select('config')
     .eq('id', 1)
@@ -374,7 +377,7 @@ export const getAgentConfig = async (): Promise<FullAgentConfig> => {
 };
 
 export const updateAgentConfig = async (config: FullAgentConfig): Promise<void> => {
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from('agent_config')
     .upsert({ id: 1, config: config as unknown as Record<string, unknown>, updated_at: new Date().toISOString() });
   if (error) throw new Error(error.message);
