@@ -155,8 +155,7 @@ export function ConversationsView({ conversations: _unused }: ConversationsViewP
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
   };
 
-  const getInitials = (name: string) =>
-    name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+  // initials handled by LeadAvatar
 
   const dotColor = (status: string) =>
     status === 'ativa' ? 'bg-success' :
