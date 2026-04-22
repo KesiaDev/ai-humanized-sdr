@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Send, Bot, User, MessageSquareOff, Search, Phone, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Conversation, Message } from '@/types/lead';
+import { LeadAvatar } from '@/components/ui/lead-avatar';
 
 // ── Tipos internos ──────────────────────────────────────────
 interface RawMessage {
@@ -239,9 +240,7 @@ export function ConversationsView({ conversations: _unused }: ConversationsViewP
                       isSelected ? 'bg-accent' : 'hover:bg-muted'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-semibold text-sm flex-shrink-0">
-                      {getInitials(conv.leadName)}
-                    </div>
+                    <LeadAvatar name={conv.leadName} size="md" status={conv.status} showStatus />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
                         <p className="text-sm font-medium text-card-foreground truncate">{conv.leadName}</p>
@@ -255,7 +254,6 @@ export function ConversationsView({ conversations: _unused }: ConversationsViewP
                           : 'Sem mensagens'}
                       </p>
                     </div>
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor(conv.status)}`} />
                   </button>
                 );
               })}
@@ -278,9 +276,7 @@ export function ConversationsView({ conversations: _unused }: ConversationsViewP
             <CardHeader className="pb-3 border-b border-border">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-semibold text-sm">
-                    {getInitials(selected.leadName)}
-                  </div>
+                  <LeadAvatar name={selected.leadName} size="md" status={selected.status} showStatus />
                   <div>
                     <p className="text-sm font-semibold text-card-foreground">{selected.leadName}</p>
                     <div className="flex items-center gap-1.5">

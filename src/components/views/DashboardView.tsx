@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, MessageSquare, TrendingUp, Target, ArrowUpRight, ArrowDownRight, BarChart3 } from 'lucide-react';
 import { Lead } from '@/types/lead';
+import { LeadAvatar } from '@/components/ui/lead-avatar';
 
 interface DashboardViewProps {
   leads: Lead[];
@@ -102,9 +103,7 @@ export function DashboardView({ leads, onSelectLead }: DashboardViewProps) {
                   className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors text-left"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-sm font-semibold">
-                      {lead.name.charAt(0)}
-                    </div>
+                    <LeadAvatar name={lead.name} size="sm" />
                     <div>
                       <p className="text-sm font-medium text-card-foreground">{lead.name}</p>
                       <p className="text-xs text-muted-foreground">{lead.company || lead.phone}</p>
