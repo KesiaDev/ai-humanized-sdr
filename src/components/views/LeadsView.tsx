@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Search, Plus, Phone, Mail, Building2, Filter, Users } from 'lucide-react';
 import { Lead } from '@/types/lead';
+import { LeadAvatar } from '@/components/ui/lead-avatar';
 
 interface LeadsViewProps {
   leads: Lead[];
@@ -90,9 +91,7 @@ export function LeadsView({ leads, onSelectLead }: LeadsViewProps) {
             <CardContent className="p-5">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-semibold">
-                    {lead.name.charAt(0)}
-                  </div>
+                  <LeadAvatar name={lead.name} size="md" />
                   <div>
                     <h3 className="font-display font-semibold text-sm text-card-foreground group-hover:text-primary transition-colors">
                       {lead.name}
