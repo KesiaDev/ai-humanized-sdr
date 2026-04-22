@@ -4,6 +4,10 @@ export default {
   darkMode: ["class"],
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
+  safelist: [
+    { pattern: /from-(teal|emerald|cyan|sky|indigo|violet|purple|fuchsia|pink|rose|orange|amber|lime|green|blue)-500/ },
+    { pattern: /to-(teal|emerald|cyan|sky|indigo|violet|purple|fuchsia|pink|rose|orange|amber|lime|green|blue)-(500|600)/ },
+  ],
   theme: {
     container: {
       center: true,
