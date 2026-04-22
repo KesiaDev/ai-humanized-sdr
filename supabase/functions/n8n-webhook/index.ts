@@ -57,22 +57,28 @@ serve(async (req) => {
       }
 
       // Find or create conversation
-      let { data: conv } = await supabase
+      const { data: existingConv } = await supabase
         .from("conversations")
         .select("id")
         .eq("lead_id", lead_id)
         .eq("status", "ativa")
         .maybeSingle();
 
+      let conv: { id: string } | null = existingConv;
+
       if (!conv) {
         const convName = lead_name || "Lead";
         const { data: newConv, error: convErr } = await supabase
           .from("conversations")
           .insert({ lead_id, lead_name: convName, status: "ativa" })
-          .select()
+          .select("id")
           .single();
         if (convErr) throw convErr;
         conv = newConv;
+      }
+
+      if (!conv) {
+        throw new Error("Failed to resolve conversation");
       }
 
       // Insert message
