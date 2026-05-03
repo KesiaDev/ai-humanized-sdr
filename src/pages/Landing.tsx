@@ -143,7 +143,8 @@ function SimulatorModal({ open, onClose, defaultPlan = "gold" }: { open: boolean
   const toolsMonthly = elevenlabs + manychat + zapi;
   const totalMonthly = monthly + toolsMonthly;
 
-  const implementBase = 3000 * agents;
+  const IMPLEMENTATION = { silver: 300, gold: 6000, black: 15000 };
+  const implementBase = IMPLEMENTATION[plan] * agents;
   const implementDiscount = implementBase * contractOpt.implementDiscount;
   const implementTotal = implementBase - implementDiscount;
 
