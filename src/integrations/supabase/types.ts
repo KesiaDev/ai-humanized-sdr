@@ -19,16 +19,19 @@ export type Database = {
           config: Json
           id: number
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           config?: Json
           id: number
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           config?: Json
           id?: number
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -41,6 +44,7 @@ export type Database = {
           lead_name: string
           status: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -50,6 +54,7 @@ export type Database = {
           lead_name: string
           status?: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -59,6 +64,7 @@ export type Database = {
           lead_name?: string
           status?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -88,6 +94,7 @@ export type Database = {
           tags: string[] | null
           updated_at: string
           urgency: string
+          user_id: string | null
         }
         Insert: {
           company?: string | null
@@ -106,6 +113,7 @@ export type Database = {
           tags?: string[] | null
           updated_at?: string
           urgency?: string
+          user_id?: string | null
         }
         Update: {
           company?: string | null
@@ -124,6 +132,7 @@ export type Database = {
           tags?: string[] | null
           updated_at?: string
           urgency?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -169,6 +178,60 @@ export type Database = {
           },
         ]
       }
+      proposals: {
+        Row: {
+          agents: number
+          company: string | null
+          contract_type: string
+          created_at: string
+          email: string
+          grand_total: number | null
+          id: string
+          implementation_total: number | null
+          leads_volume: number
+          monthly_total: number | null
+          name: string
+          notes: string | null
+          phone: string
+          plan: string
+          status: string
+        }
+        Insert: {
+          agents?: number
+          company?: string | null
+          contract_type: string
+          created_at?: string
+          email: string
+          grand_total?: number | null
+          id?: string
+          implementation_total?: number | null
+          leads_volume: number
+          monthly_total?: number | null
+          name: string
+          notes?: string | null
+          phone: string
+          plan: string
+          status?: string
+        }
+        Update: {
+          agents?: number
+          company?: string | null
+          contract_type?: string
+          created_at?: string
+          email?: string
+          grand_total?: number | null
+          id?: string
+          implementation_total?: number | null
+          leads_volume?: number
+          monthly_total?: number | null
+          name?: string
+          notes?: string | null
+          phone?: string
+          plan?: string
+          status?: string
+        }
+        Relationships: []
+      }
       schedule_events: {
         Row: {
           created_at: string
@@ -180,6 +243,7 @@ export type Database = {
           title: string
           type: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -191,6 +255,7 @@ export type Database = {
           title: string
           type?: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -202,6 +267,7 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -212,6 +278,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subscriptions: {
+        Row: {
+          agents: number
+          asaas_customer_id: string | null
+          asaas_subscription_id: string | null
+          contract_type: string
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          leads_volume: number
+          monthly_amount: number | null
+          next_due_date: string | null
+          plan: string
+          status: string
+          trial_ends_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agents?: number
+          asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
+          contract_type?: string
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          leads_volume?: number
+          monthly_amount?: number | null
+          next_due_date?: string | null
+          plan?: string
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agents?: number
+          asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
+          contract_type?: string
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          leads_volume?: number
+          monthly_amount?: number | null
+          next_due_date?: string | null
+          plan?: string
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
