@@ -268,33 +268,23 @@ function SimulatorModal({ open, onClose, defaultPlan = "gold" }: { open: boolean
                 </select>
               </div>
 
-              {/* Plan */}
-              <div>
-                <label className="text-sm text-slate-300 block mb-2">Plano</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(["silver", "gold", "black"] as PlanKey[]).map(p => (
-                    <button
-                      key={p}
-                      onClick={() => setPlan(p)}
-                      className={`py-2 rounded-lg border text-sm font-semibold transition-all ${
-                        plan === p
-                          ? p === "gold" ? "bg-yellow-500/20 border-yellow-500 text-yellow-400"
-                          : p === "black" ? "bg-white/20 border-white text-white"
-                          : "bg-emerald-500/20 border-emerald-500 text-emerald-400"
-                          : "border-white/10 text-slate-400 hover:border-white/30"
-                      }`}
-                    >
-                      {plan === p && <CheckCircle className="w-3 h-3 inline mr-1" />}
-                      {PLANS_DATA[p].label}
-                    </button>
-                  ))}
+              {/* Plan — locked, shown as badge only */}
+              <div className={`flex items-center justify-between p-3 rounded-xl border ${
+                plan === "gold" ? "border-yellow-500/30 bg-yellow-500/10"
+                : plan === "black" ? "border-white/20 bg-white/5"
+                : "border-emerald-500/30 bg-emerald-500/10"
+              }`}>
+                <div>
+                  <p className="text-xs text-slate-400 mb-0.5">Plano selecionado</p>
+                  <p className={`font-bold ${plan === "gold" ? "text-yellow-400" : plan === "black" ? "text-white" : "text-emerald-400"}`}>
+                    {PLANS_DATA[plan].label}
+                  </p>
                 </div>
-                <div className={`mt-2 text-center py-2 rounded-lg font-bold text-lg border ${
-                  plan === "gold" ? "border-yellow-500/20 bg-yellow-500/10 text-yellow-400"
-                  : plan === "black" ? "border-white/10 bg-white/5 text-white"
-                  : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                }`}>
-                  R$ {(Math.floor(PRICE_PER_LEAD[plan] * 100) / 100).toFixed(2).replace(".", ",")} <span className="text-sm font-normal text-slate-400">por lead</span>
+                <div className="text-right">
+                  <p className="text-xs text-slate-400 mb-0.5">Valor por lead</p>
+                  <p className={`font-bold ${plan === "gold" ? "text-yellow-400" : plan === "black" ? "text-white" : "text-emerald-400"}`}>
+                    R$ {(Math.floor(PRICE_PER_LEAD[plan] * 100) / 100).toFixed(2).replace(".", ",")}
+                  </p>
                 </div>
               </div>
 
