@@ -17,21 +17,21 @@ export type Database = {
       agent_config: {
         Row: {
           config: Json
-          id: number
+          id: number | null
           updated_at: string | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           config?: Json
-          id: number
+          id?: number | null
           updated_at?: string | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           config?: Json
-          id?: number
+          id?: number | null
           updated_at?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
