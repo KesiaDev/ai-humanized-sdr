@@ -373,19 +373,28 @@ export const DEFAULT_AGENT_CONFIG: FullAgentConfig = {
 };
 
 export const getAgentConfig = async (): Promise<FullAgentConfig> => {
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id;
+  if (!userId) return { ...DEFAULT_AGENT_CONFIG };
   const { data } = await (supabase as any)
     .from('agent_config')
     .select('config')
-    .eq('id', 1)
+    .eq('user_id', userId)
     .maybeSingle();
   if (!data?.config) return { ...DEFAULT_AGENT_CONFIG };
   return { ...DEFAULT_AGENT_CONFIG, ...(data.config as Partial<FullAgentConfig>) };
 };
 
 export const updateAgentConfig = async (config: FullAgentConfig): Promise<void> => {
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id;
+  if (!userId) throw new Error('Usuário não autenticado');
   const { error } = await (supabase as any)
     .from('agent_config')
-    .upsert({ id: 1, config: config as unknown as Record<string, unknown>, updated_at: new Date().toISOString() });
+    .upsert(
+      { user_id: userId, config: config as unknown as Record<string, unknown>, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    );
   if (error) throw new Error(error.message);
 };
 
