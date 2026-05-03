@@ -102,7 +102,7 @@ const FAQ_ITEMS = [
   { q: "O que significa 'humanizado'?", a: "Utilizamos 8 camadas de humanização: voz clonada, gatilhos emocionais, variação de ritmo de digitação, intenção contextual, emojis estratégicos e muito mais. O cliente não percebe que está falando com IA." },
   { q: "O que é um 'lead atendido'?", a: "Cada contato que o SDR recebe e processa (responde, qualifica ou agenda) conta como 1 lead atendido. O plano define o limite mensal." },
   { q: "Em quais canais o SDR atua?", a: "WhatsApp (Web e API Oficial), Direct do Instagram (planos Gold/Black) e pode ser integrado a qualquer canal via webhook/N8N." },
-  { q: "Quanto tempo leva a implementação?", a: "A implementação padrão leva de 5 a 10 dias úteis. Inclui configuração do agente, integração com WhatsApp, treinamento do SDR com os dados do seu negócio e testes." },
+  { q: "Quanto tempo leva a implementação?", a: "A implementação padrão leva até 20 dias úteis. Inclui configuração do agente, integração com WhatsApp, treinamento do SDR com os dados do seu negócio e testes." },
   { q: "Posso mudar de plano?", a: "Sim! Você pode fazer upgrade a qualquer momento. O downgrade está disponível no próximo ciclo de renovação." },
   { q: "Como funciona o suporte?", a: "Todos os planos incluem suporte 24h por SLA. O plano Black inclui SLA de 4h/2h e gerente dedicado." },
   { q: "Preciso de equipe técnica para instalar?", a: "Não. A NandiDev cuida de toda a implementação técnica. Você só precisa fornecer acesso ao WhatsApp Business e às informações do seu negócio." },
@@ -293,7 +293,7 @@ function SimulatorModal({ open, onClose, defaultPlan = "gold" }: { open: boolean
                   : plan === "black" ? "border-white/10 bg-white/5 text-white"
                   : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
                 }`}>
-                  R$ {PRICE_PER_LEAD[plan].toFixed(3).replace(".", ",")} <span className="text-sm font-normal text-slate-400">por lead</span>
+                  R$ {(Math.floor(PRICE_PER_LEAD[plan] * 100) / 100).toFixed(2).replace(".", ",")} <span className="text-sm font-normal text-slate-400">por lead</span>
                 </div>
               </div>
 
@@ -803,7 +803,7 @@ export default function Landing() {
             Transforme sua operação comercial com o{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">SDR IA Humanizada</span>
           </h2>
-          <p className="text-slate-400 mb-8">Comece agora e tenha seu SDR rodando em até 10 dias úteis</p>
+          <p className="text-slate-400 mb-8">Comece agora e tenha seu SDR rodando em até 20 dias úteis</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button onClick={() => openSim("gold")} className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3.5 px-8 rounded-xl transition-colors">
               Fazer meu orçamento <ArrowRight className="w-4 h-4" />
