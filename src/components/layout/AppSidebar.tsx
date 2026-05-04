@@ -1,6 +1,6 @@
-import { 
-  LayoutDashboard, Users, MessageSquare, Calendar, Bot, Settings, 
-  Download, Zap, ChevronLeft, ChevronRight 
+import {
+  LayoutDashboard, Users, MessageSquare, Calendar, Bot, Settings,
+  Download, Zap, ChevronLeft, ChevronRight, BarChart2, UserCog, ImagePlay
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -15,6 +15,9 @@ const menuItems = [
   { id: 'conversations', label: 'Conversas', icon: MessageSquare },
   { id: 'schedule', label: 'Agenda', icon: Calendar },
   { id: 'agent', label: 'Agente IA', icon: Bot },
+  { id: 'reports', label: 'Relatórios', icon: BarChart2 },
+  { id: 'media', label: 'Banco de Mídia', icon: ImagePlay },
+  { id: 'users', label: 'Usuários', icon: UserCog },
   { id: 'export', label: 'Exportar', icon: Download },
   { id: 'settings', label: 'Configurações', icon: Settings },
 ];

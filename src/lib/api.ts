@@ -312,6 +312,7 @@ export interface FullAgentConfig {
   meetingInterval: string;
   meetingLink: string;
   intents: { intent: string; action: string; active: boolean }[];
+  templates: { id: string; category: string; name: string; content: string }[];
 }
 
 export const DEFAULT_AGENT_CONFIG: FullAgentConfig = {
@@ -370,6 +371,7 @@ export const DEFAULT_AGENT_CONFIG: FullAgentConfig = {
   meetingInterval: '15',
   meetingLink: '',
   intents: [],
+  templates: [],
 };
 
 export const getAgentConfig = async (): Promise<FullAgentConfig> => {

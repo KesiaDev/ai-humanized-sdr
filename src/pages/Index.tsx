@@ -9,6 +9,9 @@ import { AgentConfigView } from '@/components/views/AgentConfigView';
 import { ScheduleView } from '@/components/views/ScheduleView';
 import { SettingsView } from '@/components/views/SettingsView';
 import { ExportView } from '@/components/views/ExportView';
+import { ReportsView } from '@/components/views/ReportsView';
+import { UserManagementView } from '@/components/views/UserManagementView';
+import { MediaBankView } from '@/components/views/MediaBankView';
 import { getLeads, getConversations } from '@/lib/api';
 
 const viewMeta: Record<string, { title: string; subtitle?: string }> = {
@@ -17,6 +20,9 @@ const viewMeta: Record<string, { title: string; subtitle?: string }> = {
   conversations: { title: 'Conversas', subtitle: 'Acompanhe as interações da IA' },
   schedule: { title: 'Agenda', subtitle: 'Eventos e reuniões agendadas' },
   agent: { title: 'Agente IA', subtitle: 'Configure o comportamento da IA' },
+  reports: { title: 'Relatórios', subtitle: 'Métricas e análises em tempo real' },
+  media: { title: 'Banco de Mídia', subtitle: 'Gerencie imagens, áudios e vídeos' },
+  users: { title: 'Usuários', subtitle: 'Gerencie acessos e permissões' },
   export: { title: 'Exportar', subtitle: 'Exporte seus dados' },
   settings: { title: 'Configurações', subtitle: 'Personalize sua plataforma' },
 };
@@ -51,6 +57,9 @@ const Index = () => {
           {currentView === 'conversations' && <ConversationsView conversations={conversations} />}
           {currentView === 'schedule' && <ScheduleView />}
           {currentView === 'agent' && <AgentConfigView />}
+          {currentView === 'reports' && <ReportsView />}
+          {currentView === 'media' && <MediaBankView />}
+          {currentView === 'users' && <UserManagementView />}
           {currentView === 'export' && <ExportView leads={leads} />}
           {currentView === 'settings' && <SettingsView />}
         </main>

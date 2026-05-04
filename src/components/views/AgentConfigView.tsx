@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Settings, MessageSquare, Sparkles, Mic, Zap, FileText, BookOpen,
   RefreshCw, Calendar, Target, Bot, Power, PowerOff, Save, Plus, X,
-  ChevronDown, ChevronUp, HelpCircle, Loader2, CheckCircle,
+  ChevronDown, ChevronUp, HelpCircle, Loader2, CheckCircle, Layout,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +29,7 @@ const agentSections = [
   { id: 'seguir', label: 'Seguir', icon: RefreshCw },
   { id: 'agenda', label: 'Agenda', icon: Calendar },
   { id: 'intencoes', label: 'Intenções', icon: Target },
+  { id: 'templates', label: 'Templates', icon: Layout },
 ];
 
 type SectionProps = {
@@ -710,6 +711,141 @@ function IntencoesSection({ config, onChange }: SectionProps) {
   );
 }
 
+function TemplatesSection({ config, onChange }: SectionProps) {
+  const [newTemplate, setNewTemplate] = useState({ category: 'qualificacao', name: '', content: '' });
+  const [showForm, setShowForm] = useState(false);
+
+  const templates = config.templates ?? [];
+
+  const categoryLabels: Record<string, string> = {
+    qualificacao: 'Qualificação',
+    followup: 'Follow-up',
+    proposta: 'Proposta',
+    boasvindas: 'Boas-vindas',
+    encerramento: 'Encerramento',
+    agendamento: 'Agendamento',
+    objecao: 'Objeção',
+    outro: 'Outro',
+  };
+
+  const addTemplate = () => {
+    if (!newTemplate.name.trim() || !newTemplate.content.trim()) return;
+    const t = { ...newTemplate, id: crypto.randomUUID() };
+    onChange({ templates: [...templates, t] });
+    setNewTemplate({ category: 'qualificacao', name: '', content: '' });
+    setShowForm(false);
+  };
+
+  const removeTemplate = (id: string) => {
+    onChange({ templates: templates.filter(t => t.id !== id) });
+  };
+
+  const CATEGORY_COLORS: Record<string, string> = {
+    qualificacao: 'bg-blue-100 text-blue-700',
+    followup: 'bg-yellow-100 text-yellow-700',
+    proposta: 'bg-green-100 text-green-700',
+    boasvindas: 'bg-purple-100 text-purple-700',
+    encerramento: 'bg-red-100 text-red-700',
+    agendamento: 'bg-cyan-100 text-cyan-700',
+    objecao: 'bg-orange-100 text-orange-700',
+    outro: 'bg-gray-100 text-gray-700',
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Templates de Mensagens</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Crie mensagens prontas para cada situação da conversa</p>
+        </div>
+        <Button size="sm" className="gap-1.5" onClick={() => setShowForm(true)}>
+          <Plus className="w-3.5 h-3.5" /> Novo template
+        </Button>
+      </div>
+
+      {showForm && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="pt-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Categoria</Label>
+                <Select value={newTemplate.category} onValueChange={v => setNewTemplate(p => ({ ...p, category: v }))}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(categoryLabels).map(([v, l]) => (
+                      <SelectItem key={v} value={v} className="text-xs">{l}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Nome do template</Label>
+                <Input
+                  className="h-8 text-xs"
+                  placeholder="Ex: Primeira abordagem"
+                  value={newTemplate.name}
+                  onChange={e => setNewTemplate(p => ({ ...p, name: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Conteúdo</Label>
+              <Textarea
+                rows={4}
+                className="text-xs resize-none"
+                placeholder="Digite a mensagem. Use {nome}, {empresa} para variáveis dinâmicas."
+                value={newTemplate.content}
+                onChange={e => setNewTemplate(p => ({ ...p, content: e.target.value }))}
+              />
+              <p className="text-[10px] text-muted-foreground">Variáveis disponíveis: {'{nome}'}, {'{empresa}'}, {'{produto}'}, {'{data}'}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" className="text-xs" onClick={addTemplate}>Salvar template</Button>
+              <Button size="sm" variant="ghost" className="text-xs" onClick={() => setShowForm(false)}>Cancelar</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {templates.length === 0 && !showForm ? (
+        <div className="text-center py-12 border-2 border-dashed rounded-xl text-muted-foreground">
+          <Layout className="w-8 h-8 mx-auto mb-2 opacity-40" />
+          <p className="text-sm font-medium">Nenhum template criado</p>
+          <p className="text-xs mt-1">Crie templates para agilizar as respostas da IA</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {templates.map(t => (
+            <Card key={t.id} className="hover:border-primary/30 transition-colors">
+              <CardContent className="pt-3 pb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${CATEGORY_COLORS[t.category] ?? 'bg-gray-100 text-gray-700'}`}>
+                        {categoryLabels[t.category] ?? t.category}
+                      </span>
+                      <span className="text-xs font-medium text-foreground">{t.name}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{t.content}</p>
+                  </div>
+                  <button
+                    onClick={() => removeTemplate(t.id)}
+                    className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0 mt-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Main Component ---
 
 export function AgentConfigView() {
@@ -755,6 +891,7 @@ export function AgentConfigView() {
       case 'seguir': return <SeguirSection {...sectionProps} />;
       case 'agenda': return <AgendaSection {...sectionProps} />;
       case 'intencoes': return <IntencoesSection {...sectionProps} />;
+      case 'templates': return <TemplatesSection {...sectionProps} />;
       default: return <ConfiguracoesSection {...sectionProps} />;
     }
   };
