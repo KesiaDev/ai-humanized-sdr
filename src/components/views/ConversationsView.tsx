@@ -9,6 +9,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { Conversation, Message } from '@/types/lead';
 import { LeadAvatar } from '@/components/ui/lead-avatar';
 
+// ── Renderiza markdown simples (negrito e itálico) ──────────
+function renderMarkdown(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**'))
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith('*') && part.endsWith('*'))
+      return <em key={i}>{part.slice(1, -1)}</em>;
+    return part;
+  });
+}
+
 // ── Tipos internos ──────────────────────────────────────────
 interface RawMessage {
   id: string;
@@ -333,7 +345,7 @@ export function ConversationsView({ conversations: _unused }: ConversationsViewP
                             ? 'gradient-primary text-primary-foreground rounded-tr-sm'
                             : 'bg-muted text-foreground rounded-tl-sm'
                         }`}>
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{renderMarkdown(msg.content)}</p>
                           <div className={`flex items-center gap-1 mt-0.5 ${
                             isIA ? 'text-primary-foreground/60 justify-end' : 'text-muted-foreground'
                           }`}>
