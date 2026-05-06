@@ -3,6 +3,62 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const { createClient } = require('@supabase/supabase-js');
+
+// ── Supabase (persiste dados para o frontend Lovable) ──────
+const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+  : null;
+
+async function sbFindLeadByPhone(phone) {
+  if (!supabase) return null;
+  const clean = phone.replace(/\D/g, '');
+  const { data } = await supabase.from('leads').select('*').ilike('phone', `%${clean}%`).limit(1).maybeSingle();
+  return data;
+}
+
+async function sbUpsertLead(lead) {
+  if (!supabase) return null;
+  const { data } = await supabase.from('leads').upsert({
+    id: lead.id,
+    name: lead.name,
+    email: lead.email || '',
+    phone: lead.phone,
+    company: lead.company || '',
+    position: lead.position || '',
+    source: lead.source || 'whatsapp',
+    status: lead.status || 'novo',
+    urgency: lead.urgency || 'media',
+    score: lead.score || 0,
+    notes: lead.notes || '',
+    tags: lead.tags || [],
+    last_contact: lead.lastContact || new Date().toISOString(),
+    next_follow_up: lead.nextFollowUp || null,
+  }, { onConflict: 'id' }).select().single();
+  return data;
+}
+
+async function sbGetOrCreateConversation(leadId, leadName) {
+  if (!supabase) return null;
+  const { data: existing } = await supabase.from('conversations').select('*').eq('lead_id', leadId).maybeSingle();
+  if (existing) return existing;
+  const { data } = await supabase.from('conversations').insert({
+    lead_id: leadId,
+    lead_name: leadName,
+    status: 'ativa',
+  }).select().single();
+  return data;
+}
+
+async function sbInsertMessage(convId, leadId, content, sender) {
+  if (!supabase) return;
+  await supabase.from('messages').insert({
+    conversation_id: convId,
+    lead_id: leadId,
+    content,
+    sender,
+  });
+}
 
 // ── Sistema de prompt NandiDev ─────────────────────────────
 const NANDI_SYSTEM_PROMPT = `Você é a Nandi, assistente comercial da NandiDev, empresa de tecnologia da Késia Nandi.
@@ -292,10 +348,21 @@ app.post('/api/whatsapp/incoming', validateWebhookSecret, async (req, res) => {
 
   if (!phone || !text) return res.status(200).json({ ok: true });
 
-  // Responde imediatamente ao Z-API (evita timeout)
+  // Responde imediatamente ao webhook (evita timeout)
   res.status(200).json({ ok: true });
 
-  let lead = leads.find(l => l.phone?.replace(/\D/g, '') === phone?.replace(/\D/g, ''));
+  // ── Lead: busca ou cria (Supabase first, fallback in-memory) ─
+  let sbLead = await sbFindLeadByPhone(phone);
+  let lead = sbLead
+    ? leads.find(l => l.id === String(sbLead.id)) || {
+        id: String(sbLead.id), name: sbLead.name, phone: sbLead.phone,
+        company: sbLead.company, position: sbLead.position, email: sbLead.email,
+        source: sbLead.source, status: sbLead.status, urgency: sbLead.urgency,
+        score: sbLead.score, notes: sbLead.notes, tags: sbLead.tags || [],
+        createdAt: sbLead.created_at, lastContact: sbLead.last_contact, nextFollowUp: sbLead.next_follow_up,
+      }
+    : leads.find(l => l.phone?.replace(/\D/g, '') === phone.replace(/\D/g, ''));
+
   if (!lead) {
     lead = {
       id: generateId(), name: phone, phone,
@@ -305,47 +372,45 @@ app.post('/api/whatsapp/incoming', validateWebhookSecret, async (req, res) => {
       createdAt: new Date().toISOString(), lastContact: new Date().toISOString(), nextFollowUp: null,
     };
     leads.push(lead);
+    const saved = await sbUpsertLead(lead);
+    if (saved) lead.id = String(saved.id); // use Supabase UUID
   }
+
   const leadId = lead.id;
   const leadName = lead.name || phone;
 
-  // Registra mensagem do lead
-  const incomingMsg = {
-    id: generateId(),
-    content: text,
-    sender: 'lead',
-    timestamp: new Date().toISOString(),
-    leadId,
-  };
-
+  // ── Conversa: busca ou cria ────────────────────────────────
   let conv = conversations.find(c => c.leadId === leadId);
   if (!conv) {
-    conv = { id: generateId(), leadId, leadName, status: 'ativa', lastMessage: incomingMsg.timestamp, messages: [] };
+    conv = { id: generateId(), leadId, leadName, status: 'ativa', lastMessage: new Date().toISOString(), messages: [] };
     conversations.push(conv);
   }
-  if (conv) {
-    conv.messages.push(incomingMsg);
-    conv.lastMessage = incomingMsg.timestamp;
-  }
+
+  const sbConv = await sbGetOrCreateConversation(leadId, leadName);
+
+  // ── Mensagem recebida ──────────────────────────────────────
+  const incomingMsg = {
+    id: generateId(), content: text, sender: 'lead',
+    timestamp: new Date().toISOString(), leadId,
+  };
+  conv.messages.push(incomingMsg);
+  conv.lastMessage = incomingMsg.timestamp;
+  if (sbConv) await sbInsertMessage(sbConv.id, leadId, text, 'lead');
 
   if (!agentConfig.active) return;
 
-  // Chama Claude diretamente se a chave estiver configurada
+  // ── Chama Claude ───────────────────────────────────────────
   if (process.env.ANTHROPIC_API_KEY) {
-    const history = conv?.messages.slice(-10) || [];
+    const history = conv.messages.slice(-10);
     const aiText = await callClaude(leadName, text, history);
     if (aiText) {
       const aiMsg = {
-        id: generateId(),
-        content: aiText,
-        sender: 'ia',
-        timestamp: new Date().toISOString(),
-        leadId,
+        id: generateId(), content: aiText, sender: 'ia',
+        timestamp: new Date().toISOString(), leadId,
       };
-      if (conv) {
-        conv.messages.push(aiMsg);
-        conv.lastMessage = aiMsg.timestamp;
-      }
+      conv.messages.push(aiMsg);
+      conv.lastMessage = aiMsg.timestamp;
+      if (sbConv) await sbInsertMessage(sbConv.id, leadId, aiText, 'ia');
       await sendEvolution(phone, aiText);
       return;
     }
@@ -436,43 +501,43 @@ app.get('/api/conversations/:leadId', (req, res) => {
   res.json(conv);
 });
 
-app.post('/api/conversations/:leadId/messages', (req, res) => {
+app.post('/api/conversations/:leadId/messages', async (req, res) => {
   const content = typeof req.body.content === 'string' ? req.body.content.slice(0, 4000) : '';
   if (!content) return res.status(400).json({ error: 'Conteúdo da mensagem é obrigatório' });
 
+  const leadId = req.params.leadId;
   const message = {
     id: generateId(),
     content,
     sender: 'sdr',
     timestamp: new Date().toISOString(),
-    leadId: req.params.leadId,
+    leadId,
   };
 
-  const conv = conversations.find(c => c.leadId === req.params.leadId);
+  let conv = conversations.find(c => c.leadId === leadId);
   if (conv) {
     conv.messages.push(message);
     conv.lastMessage = message.timestamp;
   } else {
-    const lead = leads.find(l => l.id === req.params.leadId);
-    conversations.push({
+    const lead = leads.find(l => l.id === leadId);
+    conv = {
       id: generateId(),
-      leadId: req.params.leadId,
+      leadId,
       leadName: lead?.name || 'Lead',
       status: 'ativa',
       lastMessage: message.timestamp,
       messages: [message],
-    });
+    };
+    conversations.push(conv);
   }
 
-  if (agentConfig.zapiInstanceId && agentConfig.zapiToken && agentConfig.active) {
-    const lead = leads.find(l => l.id === req.params.leadId);
-    if (lead?.phone) {
-      fetch(`https://api.z-api.io/instances/${agentConfig.zapiInstanceId}/token/${agentConfig.zapiToken}/send-text`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Client-Token': agentConfig.zapiClientToken },
-        body: JSON.stringify({ phone: lead.phone.replace(/\D/g, ''), message: content }),
-      }).catch(err => console.error('[Z-API send error]', err.message));
-    }
+  // Persiste no Supabase
+  const lead = leads.find(l => l.id === leadId);
+  const sbConv = await sbGetOrCreateConversation(leadId, lead?.name || 'Lead');
+  if (sbConv) await sbInsertMessage(sbConv.id, leadId, content, 'sdr');
+
+  if (agentConfig.active && lead?.phone) {
+    await sendEvolution(lead.phone, content);
   }
 
   res.status(201).json(message);
@@ -589,6 +654,7 @@ app.use((err, _req, res, _next) => {
 app.listen(PORT, () => {
   console.log(`✅ SDR IA Backend rodando na porta ${PORT}`);
   console.log(`   Agente ativo: ${agentConfig.active}`);
-  console.log(`   Z-API: ${agentConfig.zapiInstanceId ? '✅ configurado' : '⚠️ não configurado'}`);
+  console.log(`   Supabase: ${supabase ? '✅ conectado' : '⚠️ não configurado (SUPABASE_URL + SUPABASE_SERVICE_KEY)'}`);
+  console.log(`   Evolution: ${process.env.EVOLUTION_API_URL ? '✅ configurado' : '⚠️ não configurado'}`);
   console.log(`   N8N:   ${agentConfig.n8nWebhookUrl ? '✅ configurado' : '⚠️ não configurado'}`);
 });
