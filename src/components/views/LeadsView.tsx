@@ -1,11 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, Phone, Mail, Building2, Filter, Users } from 'lucide-react';
+import { Search, Plus, Phone, Mail, Building2, Filter, Users, Zap, Loader2 } from 'lucide-react';
 import { Lead } from '@/types/lead';
 import { LeadAvatar } from '@/components/ui/lead-avatar';
+import { supabase } from '@/integrations/supabase/client';
+import { triggerWhatsApp } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface LeadsViewProps {
   leads: Lead[];
