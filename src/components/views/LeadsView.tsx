@@ -162,6 +162,16 @@ export function LeadsView({ leads, onSelectLead }: LeadsViewProps) {
                   ))}
                 </div>
               </div>
+
+              <Button
+                size="sm"
+                className="w-full mt-3 gap-2"
+                onClick={(e) => handleTrigger(e, lead)}
+                disabled={triggering === lead.id || !lead.phone}
+              >
+                {triggering === lead.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                Disparar IA
+              </Button>
             </CardContent>
           </Card>
         ))}
