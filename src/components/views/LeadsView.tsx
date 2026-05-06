@@ -37,6 +37,32 @@ const statusLabels: Record<string, string> = {
 export function LeadsView({ leads, onSelectLead }: LeadsViewProps) {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [triggering, setTriggering] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('leads-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['leads'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
+  const handleTrigger = async (e: React.MouseEvent, lead: Lead) => {
+    e.stopPropagation();
+    setTriggering(lead.id);
+    try {
+      const res = await triggerWhatsApp(lead.id, lead.phone);
+      if (res.success) toast.success(`IA disparada para ${lead.name}`);
+      else toast.error('Falha ao disparar IA');
+    } catch {
+      toast.error('Erro de conexão ao disparar IA');
+    } finally {
+      setTriggering(null);
+    }
+  };
 
   const filtered = leads.filter(l => {
     const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) ||
