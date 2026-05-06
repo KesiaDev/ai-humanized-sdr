@@ -73,18 +73,21 @@ async function callClaude(leadName, message, history = []) {
   }
 }
 
-// ── Envia mensagem via Z-API ───────────────────────────────
-async function sendZAPI(phone, message) {
-  const { zapiInstanceId, zapiToken, zapiClientToken } = agentConfig;
-  if (!zapiInstanceId || !zapiToken) return;
+// ── Envia mensagem via Evolution API ──────────────────────
+async function sendEvolution(phone, message) {
+  const apiUrl  = process.env.EVOLUTION_API_URL;
+  const apiKey  = process.env.EVOLUTION_API_KEY;
+  const instance = process.env.EVOLUTION_INSTANCE;
+  if (!apiUrl || !apiKey || !instance) return;
+  const number = phone.replace(/\D/g, '').replace(/^0/, '55');
   try {
-    await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/send-text`, {
+    await fetch(`${apiUrl}/message/sendText/${instance}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Client-Token': zapiClientToken },
-      body: JSON.stringify({ phone: phone.replace(/\D/g, ''), message }),
+      headers: { 'Content-Type': 'application/json', apikey: apiKey },
+      body: JSON.stringify({ number, textMessage: { text: message } }),
     });
   } catch (err) {
-    console.error('[Z-API send error]', err.message);
+    console.error('[Evolution send error]', err.message);
   }
 }
 
@@ -260,11 +263,22 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ── Webhook Z-API (público mas com secret opcional) ────────
+// ── Webhook Evolution API (público mas com secret opcional) ─
 app.post('/api/whatsapp/incoming', validateWebhookSecret, async (req, res) => {
   const { body } = req;
-  const phone = body.phone || body.body?.phone;
-  const text = body.text?.message || body.body?.text?.message || body.message;
+
+  // Ignora eventos que não são mensagens recebidas
+  if (body.event && body.event !== 'messages.upsert') return res.status(200).json({ ok: true });
+  // Ignora mensagens enviadas pelo próprio bot
+  if (body.data?.key?.fromMe) return res.status(200).json({ ok: true });
+
+  // Extrai phone e texto no formato Evolution API
+  const remoteJid = body.data?.key?.remoteJid || '';
+  const phone = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '') || body.phone;
+  const text  = body.data?.message?.conversation
+    || body.data?.message?.extendedTextMessage?.text
+    || body.text?.message
+    || body.message;
 
   if (!phone || !text) return res.status(200).json({ ok: true });
 
@@ -312,7 +326,7 @@ app.post('/api/whatsapp/incoming', validateWebhookSecret, async (req, res) => {
         conv.messages.push(aiMsg);
         conv.lastMessage = aiMsg.timestamp;
       }
-      await sendZAPI(phone, aiText);
+      await sendEvolution(phone, aiText);
       return;
     }
   }
