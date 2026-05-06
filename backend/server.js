@@ -4,6 +4,90 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
+// ── Sistema de prompt NandiDev ─────────────────────────────
+const NANDI_SYSTEM_PROMPT = `Você é a Nandi, assistente comercial da NandiDev, empresa de tecnologia da Késia Nandi.
+Responda perguntas sobre os 6 produtos com clareza, tom consultivo e linguagem natural — nunca agressiva.
+Sempre pergunte o que o cliente precisa antes de recomendar. Ao final de cada resposta consultiva, pergunte se faz sentido.
+WhatsApp comercial da Késia: (54) 99624-6565.
+
+PRODUTOS NANDIDEV:
+
+1. DISPARO.IA — Automação de WhatsApp 100% na nuvem. Dispara campanhas, follow-ups com IA e voz sintética.
+Planos: Start R$197 (1.000 disparos, 1 número), Growth R$347 (2.000, 2 números), Pro R$647 (5.000, 5 números), Business R$1.197 (10.000, ilimitados, multi-usuário). Add-ons: instâncias extras R$97, follow-up avançado R$147, voz IA R$97, A/B test R$97. Sem instalar nada, anti-ban por design.
+
+2. NANDIFLOW — ATENDIMENTO MULTI-AGENTES — Helpdesk WhatsApp para equipes. Vários atendentes no mesmo número, IA sugere respostas em 3 tons (Formal/Amigável/Direto), análise de sentimento em tempo real.
+Planos: Conexão R$197/mês + R$997 impl (1 número, 3 agentes, 1.000 conv/mês), Equipe R$497 + R$1.497 impl (5 números, 10 agentes, 5.000 conv), Escala R$997 + R$2.497 impl (20 números, 30 agentes, 20.000 conv). Sem API oficial Meta, sem burocracia.
+
+3. SDR IA HUMANIZADA — Agente de pré-vendas com IA que prospecta, qualifica e agenda reuniões 24/7. 8 camadas de humanização (digitação simulada, variação de vocabulário, voz clonada, erros ocasionais).
+Preço por lead: Silver R$1,497/lead, Gold R$1,997/lead, Black R$2,997/lead. Implantação: R$3.000/6.000/15.000 (50% off no anual). Funciona no WhatsApp e Instagram. Responde em menos de 3 segundos. Muito mais barato que SDR humano (R$4.000-6.000/mês).
+
+4. SDR JURÍDICO — Versão especializada para advogados e escritórios. Compliance OAB/LGPD nativo, nunca promete resultados. Roteia o lead para o agente da área certa (Trabalhista, Família, Previdenciário, Cível, Empresarial, Consumidor).
+Planos: Essencial R$1,99/lead + R$3.000 impl (advogado solo), Escritório R$2,49/lead + R$3.500 (2-5 advogados, mais popular), Corporativo R$2,99/lead + R$5.000 (grandes escritórios). Cupons: NANDI20 (20% off).
+
+5. RADAR COMERCIAL — Geração de leads B2B com IA. Busca empresas por CNPJ/Receita Federal, enriquece com telefone/WhatsApp/e-mail validados, score de qualificação 0-100 com temperatura HOT/WARM/COLD.
+Planos: Trial grátis 14 dias (100 leads), Starter R$697/mês (1.000 leads), Growth R$1.297 (3.000), Pro R$2.497 (5.000, score IA), Scale R$3.997 (10.000), Agency R$5.997 (20.000, subcontas). Crédito só por lead novo, busca interna gratuita. 100% LGPD.
+
+6. MEGA AUTOMAÇÃO DE REDES SOCIAIS — Esteira de conteúdo automática via N8N+IA. Coleta notícias, reescreve em português com IA e publica simultaneamente em WordPress, LinkedIn, Facebook e X/Twitter a cada 2 horas. Vendida como serviço/implantação, preço sob consulta.
+
+COMO RECOMENDAR:
+- Quer disparar mensagens em massa → Disparo.IA
+- Quer organizar atendimento com equipe → NandiFlow
+- Quer prospectar leads B2B → Radar Comercial
+- Quer agente que aborda leads automaticamente → SDR IA Humanizada
+- É advogado → SDR Jurídico
+- Quer automatizar conteúdo de redes sociais → Mega Automação`;
+
+// ── Chamada Claude API ─────────────────────────────────────
+async function callClaude(leadName, message, history = []) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+
+  const messages = [
+    ...history.slice(-6).map(m => ({
+      role: m.sender === 'lead' ? 'user' : 'assistant',
+      content: m.content,
+    })),
+    { role: 'user', content: `${leadName} diz: ${message}` },
+  ];
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        system: NANDI_SYSTEM_PROMPT,
+        messages,
+      }),
+    });
+    const data = await res.json();
+    return data.content?.[0]?.text || null;
+  } catch (err) {
+    console.error('[Claude API error]', err.message);
+    return null;
+  }
+}
+
+// ── Envia mensagem via Z-API ───────────────────────────────
+async function sendZAPI(phone, message) {
+  const { zapiInstanceId, zapiToken, zapiClientToken } = agentConfig;
+  if (!zapiInstanceId || !zapiToken) return;
+  try {
+    await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/send-text`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Client-Token': zapiClientToken },
+      body: JSON.stringify({ phone: phone.replace(/\D/g, ''), message }),
+    });
+  } catch (err) {
+    console.error('[Z-API send error]', err.message);
+  }
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -177,46 +261,70 @@ app.get('/health', (_req, res) => {
 });
 
 // ── Webhook Z-API (público mas com secret opcional) ────────
-app.post('/api/whatsapp/incoming', validateWebhookSecret, (req, res) => {
+app.post('/api/whatsapp/incoming', validateWebhookSecret, async (req, res) => {
   const { body } = req;
   const phone = body.phone || body.body?.phone;
   const text = body.text?.message || body.body?.text?.message || body.message;
 
   if (!phone || !text) return res.status(200).json({ ok: true });
 
-  const lead = leads.find(l => l.phone?.replace(/\D/g, '') === phone?.replace(/\D/g, ''));
+  // Responde imediatamente ao Z-API (evita timeout)
+  res.status(200).json({ ok: true });
 
-  const message = {
+  const lead = leads.find(l => l.phone?.replace(/\D/g, '') === phone?.replace(/\D/g, ''));
+  const leadId = lead?.id || phone;
+  const leadName = lead?.name || 'cliente';
+
+  // Registra mensagem do lead
+  const incomingMsg = {
     id: generateId(),
     content: text,
     sender: 'lead',
     timestamp: new Date().toISOString(),
-    leadId: lead?.id || phone,
+    leadId,
   };
 
-  if (lead) {
-    const conv = conversations.find(c => c.leadId === lead.id);
-    if (conv) {
-      conv.messages.push(message);
-      conv.lastMessage = message.timestamp;
-    } else {
-      conversations.push({
-        id: generateId(), leadId: lead.id, leadName: lead.name,
-        status: 'ativa', lastMessage: message.timestamp, messages: [message],
-      });
+  let conv = conversations.find(c => c.leadId === leadId);
+  if (lead && !conv) {
+    conv = { id: generateId(), leadId, leadName, status: 'ativa', lastMessage: incomingMsg.timestamp, messages: [] };
+    conversations.push(conv);
+  }
+  if (conv) {
+    conv.messages.push(incomingMsg);
+    conv.lastMessage = incomingMsg.timestamp;
+  }
+
+  if (!agentConfig.active) return;
+
+  // Chama Claude diretamente se a chave estiver configurada
+  if (process.env.ANTHROPIC_API_KEY) {
+    const history = conv?.messages.slice(-10) || [];
+    const aiText = await callClaude(leadName, text, history);
+    if (aiText) {
+      const aiMsg = {
+        id: generateId(),
+        content: aiText,
+        sender: 'ia',
+        timestamp: new Date().toISOString(),
+        leadId,
+      };
+      if (conv) {
+        conv.messages.push(aiMsg);
+        conv.lastMessage = aiMsg.timestamp;
+      }
+      await sendZAPI(phone, aiText);
+      return;
     }
   }
 
-  if (agentConfig.n8nWebhookUrl && agentConfig.active) {
-    // Repassa apenas campos necessários ao N8N — não o payload bruto completo (A04)
+  // Fallback: repassa ao N8N se Claude não estiver configurado
+  if (agentConfig.n8nWebhookUrl) {
     fetch(agentConfig.n8nWebhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, text, leadId: lead?.id, leadName: lead?.name }),
+      body: JSON.stringify({ phone, text, leadId, leadName }),
     }).catch(err => console.error('[N8N forward error]', err.message));
   }
-
-  res.status(200).json({ ok: true });
 });
 
 // ── Rotas protegidas por API Key ───────────────────────────
