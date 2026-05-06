@@ -1,7 +1,10 @@
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, MessageSquare, TrendingUp, Target, ArrowUpRight, ArrowDownRight, BarChart3 } from 'lucide-react';
+import { Users, MessageSquare, TrendingUp, Target, ArrowUpRight, ArrowDownRight, BarChart3, Bot, MessageCircle } from 'lucide-react';
 import { Lead } from '@/types/lead';
 import { LeadAvatar } from '@/components/ui/lead-avatar';
+import { getAgentConfig } from '@/lib/api';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DashboardViewProps {
   leads: Lead[];
