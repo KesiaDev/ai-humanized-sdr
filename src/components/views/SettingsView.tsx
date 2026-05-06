@@ -20,9 +20,9 @@ function loadSettings() {
 }
 
 const defaultSettings = {
-  companyName: 'Prevensul Comercial Elétrica',
-  segment: 'Segurança e Elétrica',
-  website: 'https://prevensul.com.br',
+  companyName: 'NandiDev',
+  segment: 'Tecnologia / Automação com IA',
+  website: 'https://nandidev.com.br',
   notifNewLead: true,
   notifQualified: true,
   notifMeeting: true,

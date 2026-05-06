@@ -98,8 +98,18 @@ const PORT = process.env.PORT || 3001;
 app.use(helmet());
 
 // ── CORS (A02) ─────────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://human-hearted-ai.lovable.app',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, cb) => {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    cb(new Error('CORS not allowed'));
+  },
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
@@ -231,12 +241,12 @@ let appointments = [
 ];
 
 let agentConfig = {
-  agentName: 'Camila',
-  companyName: '',
-  services: '',
+  agentName: 'Nandi',
+  companyName: 'NandiDev',
+  services: 'Disparo.IA, NandiFlow Multi-Agentes, SDR IA Humanizada, SDR Jurídico, Radar Comercial, Mega Automação de Redes Sociais',
   businessHours: 'Segunda a sexta, 9h às 20h',
   address: '',
-  humanWhatsApp: '',
+  humanWhatsApp: '(54) 99624-6565',
   zapiInstanceId: process.env.ZAPI_INSTANCE_ID || '',
   zapiToken: process.env.ZAPI_TOKEN || '',
   zapiClientToken: process.env.ZAPI_CLIENT_TOKEN || '',
@@ -285,9 +295,19 @@ app.post('/api/whatsapp/incoming', validateWebhookSecret, async (req, res) => {
   // Responde imediatamente ao Z-API (evita timeout)
   res.status(200).json({ ok: true });
 
-  const lead = leads.find(l => l.phone?.replace(/\D/g, '') === phone?.replace(/\D/g, ''));
-  const leadId = lead?.id || phone;
-  const leadName = lead?.name || 'cliente';
+  let lead = leads.find(l => l.phone?.replace(/\D/g, '') === phone?.replace(/\D/g, ''));
+  if (!lead) {
+    lead = {
+      id: generateId(), name: phone, phone,
+      company: '', position: '', email: '',
+      source: 'whatsapp', status: 'novo', urgency: 'media',
+      score: 0, notes: '', tags: ['whatsapp'],
+      createdAt: new Date().toISOString(), lastContact: new Date().toISOString(), nextFollowUp: null,
+    };
+    leads.push(lead);
+  }
+  const leadId = lead.id;
+  const leadName = lead.name || phone;
 
   // Registra mensagem do lead
   const incomingMsg = {
@@ -299,7 +319,7 @@ app.post('/api/whatsapp/incoming', validateWebhookSecret, async (req, res) => {
   };
 
   let conv = conversations.find(c => c.leadId === leadId);
-  if (lead && !conv) {
+  if (!conv) {
     conv = { id: generateId(), leadId, leadName, status: 'ativa', lastMessage: incomingMsg.timestamp, messages: [] };
     conversations.push(conv);
   }
