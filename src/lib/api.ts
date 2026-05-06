@@ -238,10 +238,10 @@ const webhookHeaders = {
 };
 
 export const triggerWhatsApp = async (leadId: string, phone: string): Promise<{ success: boolean }> => {
-  const res = await fetch(`${N8N_WEBHOOK}/lead`, {
+  const res = await fetch('https://ai-humanized-sdr-production.up.railway.app/api/whatsapp/trigger', {
     method: 'POST',
-    headers: webhookHeaders,
-    body: JSON.stringify({ phone, source: 'manual', notes: `Disparado da plataforma — lead ID: ${leadId}` }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ leadId, phone }),
   });
   return { success: res.ok };
 };
