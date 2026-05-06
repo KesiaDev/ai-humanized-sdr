@@ -238,10 +238,10 @@ const webhookHeaders = {
 };
 
 export const triggerWhatsApp = async (leadId: string, phone: string): Promise<{ success: boolean }> => {
-  const res = await fetch(`${N8N_WEBHOOK}/lead`, {
+  const res = await fetch('https://ai-humanized-sdr-production.up.railway.app/api/whatsapp/trigger', {
     method: 'POST',
-    headers: webhookHeaders,
-    body: JSON.stringify({ phone, source: 'manual', notes: `Disparado da plataforma — lead ID: ${leadId}` }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ leadId, phone }),
   });
   return { success: res.ok };
 };
@@ -317,16 +317,16 @@ export interface FullAgentConfig {
 
 export const DEFAULT_AGENT_CONFIG: FullAgentConfig = {
   active: true,
-  agentName: '',
-  agentDescription: '',
-  role: '',
-  companyName: '',
+  agentName: 'Nandi',
+  agentDescription: 'IA comercial da NandiDev que apresenta e vende os 6 produtos da empresa',
+  role: 'Assistente comercial consultiva',
+  companyName: 'NandiDev',
   language: 'pt-br',
   alwaysOn: true,
   startTime: '08:00',
   endTime: '18:00',
   offHoursMsg: 'Obrigado pelo contato! Retornamos em breve!',
-  channelWhatsApp: false,
+  channelWhatsApp: true,
   channelInstagram: false,
   channelFacebook: false,
   channelSiteChat: false,
@@ -354,8 +354,8 @@ export const DEFAULT_AGENT_CONFIG: FullAgentConfig = {
   keywords: [],
   welcomeMsg: '',
   closingMsg: '',
-  systemPrompt: '',
-  productDescription: '',
+  systemPrompt: 'Você é a Nandi, assistente comercial da NandiDev, empresa de tecnologia da Késia Nandi. Responda perguntas sobre os 6 produtos com clareza, tom consultivo e linguagem natural. Sempre pergunte o que o cliente precisa antes de recomendar. WhatsApp comercial: (54) 99624-6565.',
+  productDescription: '1. Disparo.IA — Automação de WhatsApp 100% na nuvem. Planos: Start R$197, Growth R$347, Pro R$647, Business R$1.197.\n2. NandiFlow Multi-Agentes — Helpdesk WhatsApp para equipes. Planos: Conexão R$197/mês, Equipe R$497, Escala R$997.\n3. SDR IA Humanizada — Agente de pré-vendas 24/7. Preço por lead: Silver R$1.497, Gold R$1.997, Black R$2.997.\n4. SDR Jurídico — SDR para advogados, compliance OAB/LGPD. Planos: Essencial R$1,99/lead, Escritório R$2,49/lead, Corporativo R$2,99/lead.\n5. Radar Comercial — Geração de leads B2B. Planos: Starter R$697, Growth R$1.297, Pro R$2.497, Scale R$3.997.\n6. Mega Automação de Redes Sociais — Esteira de conteúdo via N8N+IA, publica em WordPress/LinkedIn/Facebook/X a cada 2h. Preço sob consulta.',
   forbiddenTopics: '',
   qualificationQuestions: '',
   faqContent: '',

@@ -1,11 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, Phone, Mail, Building2, Filter, Users } from 'lucide-react';
+import { Search, Plus, Phone, Mail, Building2, Filter, Users, Zap, Loader2 } from 'lucide-react';
 import { Lead } from '@/types/lead';
 import { LeadAvatar } from '@/components/ui/lead-avatar';
+import { supabase } from '@/integrations/supabase/client';
+import { triggerWhatsApp } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface LeadsViewProps {
   leads: Lead[];
@@ -33,6 +37,32 @@ const statusLabels: Record<string, string> = {
 export function LeadsView({ leads, onSelectLead }: LeadsViewProps) {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [triggering, setTriggering] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('leads-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['leads'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
+  const handleTrigger = async (e: React.MouseEvent, lead: Lead) => {
+    e.stopPropagation();
+    setTriggering(lead.id);
+    try {
+      const res = await triggerWhatsApp(lead.id, lead.phone);
+      if (res.success) toast.success(`IA disparada para ${lead.name}`);
+      else toast.error('Falha ao disparar IA');
+    } catch {
+      toast.error('Erro de conexão ao disparar IA');
+    } finally {
+      setTriggering(null);
+    }
+  };
 
   const filtered = leads.filter(l => {
     const matchSearch = l.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -132,6 +162,16 @@ export function LeadsView({ leads, onSelectLead }: LeadsViewProps) {
                   ))}
                 </div>
               </div>
+
+              <Button
+                size="sm"
+                className="w-full mt-3 gap-2"
+                onClick={(e) => handleTrigger(e, lead)}
+                disabled={triggering === lead.id || !lead.phone}
+              >
+                {triggering === lead.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                Disparar IA
+              </Button>
             </CardContent>
           </Card>
         ))}

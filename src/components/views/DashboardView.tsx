@@ -1,7 +1,10 @@
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, MessageSquare, TrendingUp, Target, ArrowUpRight, ArrowDownRight, BarChart3 } from 'lucide-react';
+import { Users, MessageSquare, TrendingUp, Target, ArrowUpRight, ArrowDownRight, BarChart3, Bot, MessageCircle } from 'lucide-react';
 import { Lead } from '@/types/lead';
 import { LeadAvatar } from '@/components/ui/lead-avatar';
+import { getAgentConfig } from '@/lib/api';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DashboardViewProps {
   leads: Lead[];
@@ -24,6 +27,21 @@ export function DashboardView({ leads, onSelectLead }: DashboardViewProps) {
   const closedLeads = leads.filter(l => l.status === 'fechado').length;
   const conversionRate = totalLeads > 0 ? Math.round((closedLeads / totalLeads) * 100) : 0;
 
+  const { data: agentConfig } = useQuery({ queryKey: ['agent-config'], queryFn: getAgentConfig });
+  const { data: lastActivity } = useQuery({
+    queryKey: ['last-message'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('messages')
+        .select('created_at')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data?.created_at ? new Date(data.created_at) : null;
+    },
+    refetchInterval: 15000,
+  });
+
   const stats = [
     { label: 'Total de Leads', value: totalLeads, icon: Users, change: '+12%', up: true },
     { label: 'Qualificados', value: qualifiedLeads, icon: Target, change: '+8%', up: true },
@@ -31,8 +49,45 @@ export function DashboardView({ leads, onSelectLead }: DashboardViewProps) {
     { label: 'Taxa de Conversão', value: `${conversionRate}%`, icon: MessageSquare, change: '-2%', up: false },
   ];
 
+  const isActive = agentConfig?.active === true;
+  const agentName = agentConfig?.agentName || 'Nandi';
+  const companyName = agentConfig?.companyName || 'NandiDev';
+
   return (
     <div className="space-y-6">
+      {/* Agent Status */}
+      <Card className="shadow-card">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isActive ? 'bg-success/10' : 'bg-muted'}`}>
+                <Bot className={`w-6 h-6 ${isActive ? 'text-success' : 'text-muted-foreground'}`} />
+              </div>
+              <div>
+                <p className="font-display font-semibold text-card-foreground">{agentName} — {companyName}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium ${isActive ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-success animate-pulse' : 'bg-muted-foreground'}`} />
+                    {isActive ? 'Ativo' : 'Inativo'}
+                  </span>
+                  {agentConfig?.channelWhatsApp && (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <MessageCircle className="w-3 h-3" /> WhatsApp ✓
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Última atividade</p>
+              <p className="text-sm font-medium text-card-foreground">
+                {lastActivity ? lastActivity.toLocaleString('pt-BR') : 'Sem atividade ainda'}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
